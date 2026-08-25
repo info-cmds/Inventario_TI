@@ -29,6 +29,8 @@ export default function UsersView({ branches, departments }: UsersViewProps) {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState<'SUPERADMIN' | 'ADMINISTRADOR' | 'LECTOR'>('ADMINISTRADOR');
+  const [status, setStatus] = useState<'ACTIVO' | 'INACTIVO'>('ACTIVO');
+  const [mustChangePassword, setMustChangePassword] = useState(true);
   const [resetPassword, setResetPassword] = useState(false);
 
   // Multi-permission state with Sector Filter
@@ -42,6 +44,8 @@ export default function UsersView({ branches, departments }: UsersViewProps) {
 
   const [allBranches, setAllBranches] = useState<any[]>([]);
   const [allDepartments, setAllDepartments] = useState<any[]>([]);
+
+  const PROTECTED_EMAILS = ['ppizarro@cmds.cl', 'cgonzalezo@cmds.cl'];
 
   useEffect(() => {
     loadUsers();
@@ -109,6 +113,8 @@ export default function UsersView({ branches, departments }: UsersViewProps) {
       setEmail(user.email);
       setName(user.name);
       setRole(user.role);
+      setStatus(user.status || 'ACTIVO');
+      setMustChangePassword(user.must_change_password ?? true);
       setResetPassword(false);
       const perms = (user.permissions || []).map((p: any) => ({
         branchId: p.branchId,
@@ -120,10 +126,57 @@ export default function UsersView({ branches, departments }: UsersViewProps) {
       setEmail('');
       setName('');
       setRole('ADMINISTRADOR');
+      setStatus('ACTIVO');
+      setMustChangePassword(true);
       setResetPassword(false);
       setPermissionList([]);
     }
     setIsModalOpen(true);
+  };
+
+  const handleToggleStatus = async (u: any) => {
+    if (PROTECTED_EMAILS.includes(u.email.toLowerCase())) {
+      alert('Las cuentas de superadministrador principal (ppizarro@cmds.cl y cgonzalezo@cmds.cl) están protegidas y no pueden ser desactivadas.');
+      return;
+    }
+
+    const newStatus = u.status === 'INACTIVO' ? 'ACTIVO' : 'INACTIVO';
+    const actionText = newStatus === 'INACTIVO' ? 'desactivar' : 'activar';
+    if (!confirm(`¿Está seguro de ${actionText} la cuenta del usuario '${u.name}'?`)) return;
+
+    try {
+      const res = await fetch(`/api/users/${u.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al cambiar estado del usuario');
+      loadUsers();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleToggleMustChangePassword = async (u: any) => {
+    const newValue = !u.must_change_password;
+    const actionText = newValue
+      ? "exigir cambio de clave obligatorio en el próximo inicio de sesión"
+      : "marcar como clave normal";
+    if (!confirm(`¿Está seguro de ${actionText} para '${u.name}'?`)) return;
+
+    try {
+      const res = await fetch(`/api/users/${u.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ must_change_password: newValue }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al actualizar preferencia de clave');
+      loadUsers();
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
   const handleAddAllBranchesInSector = () => {
@@ -194,6 +247,8 @@ export default function UsersView({ branches, departments }: UsersViewProps) {
           email,
           name,
           role,
+          status,
+          must_change_password: mustChangePassword,
           resetPassword,
           branchPermissions: role === 'SUPERADMIN' ? [] : permissionList,
         }),
@@ -211,10 +266,15 @@ export default function UsersView({ branches, departments }: UsersViewProps) {
     }
   };
 
-  const handleDeleteUser = async (id: string) => {
-    if (!confirm('¿Está seguro de eliminar este usuario del sistema?')) return;
+  const handleDeleteUser = async (u: any) => {
+    if (PROTECTED_EMAILS.includes(u.email.toLowerCase())) {
+      alert('Las cuentas de superadministrador principal (ppizarro@cmds.cl y cgonzalezo@cmds.cl) están protegidas y no pueden ser eliminadas.');
+      return;
+    }
+
+    if (!confirm(`¿Está seguro de eliminar el usuario '${u.name}' del sistema?`)) return;
     try {
-      const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/users/${u.id}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al eliminar usuario');
       loadUsers();
@@ -233,15 +293,15 @@ export default function UsersView({ branches, departments }: UsersViewProps) {
       {/* Title */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Gestión de Usuarios y Permisos Granulares</h1>
+          <h1 className="text-xl font-bold text-slate-800">Gestión de Usuarios, Estado de Cuentas y Permisos</h1>
           <p className="text-xs text-slate-500">
-            Administra accesos corporativos filtrando por Sector y asignando MÚLTIPLES sucursales y departamentos
+            Administra accesos corporativos, desactivación de cuentas y cambio obligatorio de clave en primer login
           </p>
         </div>
 
         <button
           onClick={() => handleOpenModal()}
-          className="px-4 py-2 text-xs font-bold text-white bg-[#016098] hover:bg-[#014d7a] rounded-xl shadow-xs transition-colors flex items-center space-x-1.5"
+          className="px-4 py-2 text-xs font-bold text-white bg-[#016098] hover:bg-[#014d7a] rounded-xl shadow-xs transition-colors flex items-center space-x-1.5 cursor-pointer"
         >
           <Plus className="w-4 h-4 text-[#39BABD]" />
           <span>Nuevo Usuario / Admin</span>
@@ -266,6 +326,7 @@ export default function UsersView({ branches, departments }: UsersViewProps) {
                 <th className="py-3 px-4">Nombre Completo</th>
                 <th className="py-3 px-4">Correo Electrónico</th>
                 <th className="py-3 px-4">Rol en el Sistema</th>
+                <th className="py-3 px-4">Estado Cuenta</th>
                 <th className="py-3 px-4">Sucursales y Departamentos Asignados</th>
                 <th className="py-3 px-4 text-center">Estado Clave</th>
                 <th className="py-3 px-4 text-right">Acciones</th>
@@ -274,75 +335,130 @@ export default function UsersView({ branches, departments }: UsersViewProps) {
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {users
                 .slice((currentPage - 1) * pageSize, currentPage * pageSize)
-                .map((u) => (
-                <tr key={u.id} className="hover:bg-slate-50">
-                  <td className="py-3 px-4 font-bold text-slate-900">{u.name}</td>
-                  <td className="py-3 px-4 font-medium text-[#016098]">{u.email}</td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${u.role === 'SUPERADMIN'
-                          ? 'bg-[#EB567F]/15 text-[#EB567F]'
-                          : u.role === 'ADMINISTRADOR'
-                            ? 'bg-[#016098]/15 text-[#016098]'
-                            : 'bg-[#39BABD]/15 text-[#39BABD]'
-                        }`}
+                .map((u) => {
+                  const isProtected = PROTECTED_EMAILS.includes(u.email.toLowerCase());
+                  const isInactive = u.status === 'INACTIVO';
+
+                  return (
+                    <tr
+                      key={u.id}
+                      className={isInactive ? 'bg-rose-50/40 hover:bg-rose-50/60' : 'hover:bg-slate-50'}
                     >
-                      {u.role}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-slate-600">
-                    {u.role === 'SUPERADMIN' ? (
-                      <span className="font-bold text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-lg text-xs">
-                        Acceso Global Total (Todas las Sucursales)
-                      </span>
-                    ) : u.permissions && u.permissions.length > 0 ? (
-                      <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
-                        {u.permissions.map((p: any, idx: number) => (
-                          <div
-                            key={idx}
-                            className="inline-flex items-center space-x-1 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg text-[11px] mr-1.5 mb-1"
-                          >
-                            {p.sectorName && (
-                              <span className="font-bold text-[#F7A517]">
-                                [{p.sectorName}]
-                              </span>
-                            )}
-                            <span className="font-bold text-[#016098]">{p.branchName}</span>
-                            <span className="text-slate-400">|</span>
-                            <span className="font-medium text-slate-700">{p.departmentName}</span>
+                      <td className="py-3 px-4 font-bold text-slate-900">
+                        <div className="flex items-center space-x-1.5">
+                          <span>{u.name}</span>
+                          {isProtected && (
+                            <span
+                              className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-200"
+                              title="Cuenta de Superadmin principal protegida contra desactivación y eliminación"
+                            >
+                              🛡️ Protegido
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 font-medium text-[#016098]">{u.email}</td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            u.role === 'SUPERADMIN'
+                              ? 'bg-[#EB567F]/15 text-[#EB567F]'
+                              : u.role === 'ADMINISTRADOR'
+                              ? 'bg-[#016098]/15 text-[#016098]'
+                              : 'bg-[#39BABD]/15 text-[#39BABD]'
+                          }`}
+                        >
+                          {u.role}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            isInactive
+                              ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                              : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          }`}
+                        >
+                          {isInactive ? 'Desactivada' : 'Activa'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-slate-600">
+                        {u.role === 'SUPERADMIN' ? (
+                          <span className="font-bold text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-lg text-xs">
+                            Acceso Global Total (Todas las Sucursales)
+                          </span>
+                        ) : u.permissions && u.permissions.length > 0 ? (
+                          <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
+                            {u.permissions.map((p: any, idx: number) => (
+                              <div
+                                key={idx}
+                                className="inline-flex items-center space-x-1 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg text-[11px] mr-1.5 mb-1"
+                              >
+                                {p.sectorName && (
+                                  <span className="font-bold text-[#F7A517]">
+                                    [{p.sectorName}]
+                                  </span>
+                                )}
+                                <span className="font-bold text-[#016098]">{p.branchName}</span>
+                                <span className="text-slate-400">|</span>
+                                <span className="font-medium text-slate-700">{p.departmentName}</span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-slate-400 italic">Sin sucursal asignada</span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${u.must_change_password ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
-                        }`}
-                    >
-                      {u.must_change_password ? 'Pendiente Cambio' : 'Normal'}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right space-x-2">
-                    <button
-                      onClick={() => handleOpenModal(u)}
-                      className="p-1.5 text-slate-500 hover:text-[#016098] hover:bg-slate-100 rounded-lg"
-                      title="Editar usuario y permisos"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteUser(u.id)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
-                      title="Eliminar usuario"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                        ) : (
+                          <span className="text-slate-400 italic">Sin sucursal asignada</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          onClick={() => handleToggleMustChangePassword(u)}
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition-colors ${
+                            u.must_change_password
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200'
+                              : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                          }`}
+                          title="Haz clic para alternar obligación de cambio de clave en primer login"
+                        >
+                          {u.must_change_password ? '🔑 Cambio Obligatorio' : '✓ Normal'}
+                        </button>
+                      </td>
+                      <td className="py-3 px-4 text-right space-x-1">
+                        {/* Status Toggle Button (Activar / Desactivar) */}
+                        {!isProtected && (
+                          <button
+                            onClick={() => handleToggleStatus(u)}
+                            className={`p-1.5 rounded-lg font-bold text-[10px] transition-colors ${
+                              isInactive
+                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                : 'bg-rose-100 text-rose-800 hover:bg-rose-200'
+                            }`}
+                            title={isInactive ? 'Activar cuenta de usuario' : 'Desactivar cuenta de usuario'}
+                          >
+                            {isInactive ? 'Activar' : 'Desactivar'}
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => handleOpenModal(u)}
+                          className="p-1.5 text-slate-500 hover:text-[#016098] hover:bg-slate-100 rounded-lg cursor-pointer"
+                          title="Editar usuario y permisos"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+
+                        {!isProtected && (
+                          <button
+                            onClick={() => handleDeleteUser(u)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                            title="Eliminar usuario"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
@@ -395,17 +511,32 @@ export default function UsersView({ branches, departments }: UsersViewProps) {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Rol de Usuario</label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as any)}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#016098] outline-none font-semibold text-slate-800"
-                >
-                  <option value="SUPERADMIN">SUPERADMIN (Acceso Total a Todas las Sucursales)</option>
-                  <option value="ADMINISTRADOR">ADMINISTRADOR (Gestor de Sucursales Seleccionadas)</option>
-                  <option value="LECTOR">LECTOR (Solo Lectura en Sucursales Seleccionadas)</option>
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Rol de Usuario</label>
+                  <select
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as any)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#016098] outline-none font-semibold text-slate-800"
+                  >
+                    <option value="SUPERADMIN">SUPERADMIN (Acceso Total)</option>
+                    <option value="ADMINISTRADOR">ADMINISTRADOR (Gestor)</option>
+                    <option value="LECTOR">LECTOR (Solo Lectura)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Estado de la Cuenta</label>
+                  <select
+                    value={status}
+                    disabled={editingUser && PROTECTED_EMAILS.includes(editingUser.email.toLowerCase())}
+                    onChange={(e) => setStatus(e.target.value as any)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#016098] outline-none font-bold text-slate-800 disabled:opacity-50"
+                  >
+                    <option value="ACTIVO">ACTIVA (Permite Login)</option>
+                    <option value="INACTIVO">DESACTIVADA (Bloquea Login)</option>
+                  </select>
+                </div>
               </div>
 
               {role !== 'SUPERADMIN' && (
@@ -553,8 +684,18 @@ export default function UsersView({ branches, departments }: UsersViewProps) {
                 </div>
               )}
 
-              {editingUser && (
-                <div className="pt-2 border-t border-slate-100">
+              <div className="pt-3 border-t border-slate-200 space-y-2">
+                <label className="flex items-center space-x-2 cursor-pointer text-xs font-semibold text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={mustChangePassword}
+                    onChange={(e) => setMustChangePassword(e.target.checked)}
+                    className="rounded text-[#016098] focus:ring-[#016098]"
+                  />
+                  <span>🔑 Obligar al usuario a cambiar su contraseña en su próximo inicio de sesión</span>
+                </label>
+
+                {editingUser && (
                   <label className="flex items-center space-x-2 cursor-pointer text-xs font-semibold text-amber-800">
                     <input
                       type="checkbox"
@@ -562,10 +703,10 @@ export default function UsersView({ branches, departments }: UsersViewProps) {
                       onChange={(e) => setResetPassword(e.target.checked)}
                       className="rounded text-[#016098]"
                     />
-                    <span>Restablecer contraseña a 'admin123' (Forzar cambio al login)</span>
+                    <span>Restablecer contraseña a 'admin123' (y forzar cambio al login)</span>
                   </label>
-                </div>
-              )}
+                )}
+              </div>
 
               <div className="flex justify-end space-x-3 pt-2 border-t border-slate-100">
                 <button

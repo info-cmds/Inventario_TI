@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
       email: u.email,
       name: u.name,
       role: u.role,
+      status: u.status || 'ACTIVO',
       must_change_password: u.must_change_password,
       createdAt: u.createdAt,
       permissions: u.userBranchPermissions.map((p) => ({
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Acceso denegado (requiere SUPERADMIN)' }, { status: 403 });
     }
 
-    const { email, name, role, password, branchPermissions } = await req.json();
+    const { email, name, role, password, status, must_change_password, branchPermissions } = await req.json();
 
     if (!email || !name || !role) {
       return NextResponse.json({ error: 'Email, nombre y rol son obligatorios' }, { status: 400 });
@@ -76,8 +77,9 @@ export async function POST(req: NextRequest) {
         email: email.trim().toLowerCase(),
         name,
         role,
+        status: status ? status.toUpperCase() : 'ACTIVO',
         password: hashedPassword,
-        must_change_password: true,
+        must_change_password: must_change_password !== undefined ? Boolean(must_change_password) : true,
       },
     });
 

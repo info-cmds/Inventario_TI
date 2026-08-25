@@ -15,6 +15,7 @@ model User {
   name                 String
   password             String
   role                 String                 @default("LECTOR") // SUPERADMIN, ADMINISTRADOR, LECTOR
+  status               String                 @default("ACTIVO") // ACTIVO, INACTIVO
   must_change_password Boolean                @default(true)
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt

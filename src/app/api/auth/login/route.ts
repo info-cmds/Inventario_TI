@@ -28,6 +28,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const PROTECTED_EMAILS = ['ppizarro@cmds.cl', 'cgonzalezo@cmds.cl'];
+    const isProtectedSuperadmin = PROTECTED_EMAILS.includes(user.email.toLowerCase());
+
+    if (!isProtectedSuperadmin && user.status === 'INACTIVO') {
+      return NextResponse.json(
+        { error: 'Su cuenta de usuario se encuentra desactivada. Contacte al administrador del sistema.' },
+        { status: 403 }
+      );
+    }
+
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       return NextResponse.json(
