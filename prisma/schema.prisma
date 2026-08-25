@@ -1,0 +1,203 @@
+// Prisma Schema for Control de Inventario Tecnologico Multi-Sucursal
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String                 @id @default(uuid())
+  email                String                 @unique
+  name                 String
+  password             String
+  role                 String                 @default("LECTOR") // SUPERADMIN, ADMINISTRADOR, LECTOR
+  must_change_password Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  userBranchPermissions UserBranchPermission[]
+  assignedAssignments  EquipmentAssignment[]  @relation("AssignedByUser")
+
+  @@map("users")
+}
+
+model UserBranchPermission {
+  id           String      @id @default(uuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sectorId     String?
+  sector       Sector?     @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  branchId     String
+  branch       Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, branchId, departmentId])
+  @@map("user_branch_permissions")
+}
+
+model Sector {
+  id                   String                 @id @default(uuid())
+  name                 String                 @unique // Educación, Salud, Casa Central
+  description          String?
+  status               String                 @default("ACTIVO") // ACTIVO, INACTIVO
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  branches             Branch[]
+  userBranchPermissions UserBranchPermission[]
+  equipmentTypes       EquipmentType[]
+  brands               Brand[]
+  equipmentModels      EquipmentModel[]
+
+  @@map("sectors")
+}
+
+model Branch {
+  id                   String                 @id @default(uuid())
+  name                 String
+  code                 String                 @unique
+  sectorId             String
+  sector               Sector                 @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  status               String                 @default("ACTIVA") // ACTIVA, INACTIVA
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  departments          Department[]
+  employees            Employee[]
+  equipment            Equipment[]
+  userBranchPermissions UserBranchPermission[]
+
+  @@map("branches")
+}
+
+model Department {
+  id                   String                 @id @default(uuid())
+  name                 String
+  vlan                 String?
+  branchId             String
+  branch               Branch                 @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  employees            Employee[]
+  equipment            Equipment[]
+  userBranchPermissions UserBranchPermission[]
+
+  @@unique([name, branchId])
+  @@map("departments")
+}
+
+model Employee {
+  id               String                @id @default(uuid())
+  rut_document     String                @unique
+  names            String                @default("")
+  paternal_surname String                @default("")
+  maternal_surname String                @default("")
+  full_name        String
+  email            String
+  position         String
+  branchId         String
+  branch           Branch                @relation(fields: [branchId], references: [id])
+  departmentId     String?
+  department       Department?           @relation(fields: [departmentId], references: [id])
+  status           String                @default("ACTIVO") // ACTIVO, INACTIVO
+  history_logs     String? // JSON array of audit events: [{ timestamp, userName, type, changes, notes }]
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  assignments      EquipmentAssignment[]
+
+  @@map("employees")
+}
+
+model EquipmentType {
+  id                 String           @id @default(uuid())
+  name               String
+  sectorId           String?
+  sector             Sector?          @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  description        String?
+  dynamic_attributes String           @default("[]") // JSON string of attributes array
+  associated_brands  String           @default("[]") // JSON string of brand IDs array
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  equipment          Equipment[]
+  models             EquipmentModel[]
+
+  @@map("equipment_types")
+}
+
+model Brand {
+  id        String           @id @default(uuid())
+  name      String
+  sectorId  String?
+  sector    Sector?          @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  models    EquipmentModel[]
+  equipment Equipment[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@map("brands")
+}
+
+model EquipmentModel {
+  id        String         @id @default(uuid())
+  name      String
+  sectorId  String?
+  sector    Sector?        @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  brandId   String
+  brand     Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  typeId    String?
+  type      EquipmentType? @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  ram       String?
+  processor String?
+  storage   String?
+  specs     String?
+  equipment Equipment[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@map("equipment_models")
+}
+
+model Equipment {
+  id             String                @id @default(uuid())
+  asset_tag      String                @unique
+  serial_number  String                @unique
+  typeId         String
+  type           EquipmentType         @relation(fields: [typeId], references: [id])
+  brandId        String?
+  brand          Brand?                @relation(fields: [brandId], references: [id])
+  modelId        String?
+  model          EquipmentModel?       @relation(fields: [modelId], references: [id])
+  branchId       String
+  branch         Branch                @relation(fields: [branchId], references: [id])
+  departmentId   String?
+  department     Department?           @relation(fields: [departmentId], references: [id])
+  vlan           String?
+  ip_address     String?
+  dynamic_values String                @default("{}") // JSON string of attribute key-values
+  status         String                @default("disponible") // disponible, asignado, en_reparacion, dado_de_baja
+  history_logs   String?               // JSON array of audit events: [{ id, timestamp, userId, userName, type, changes, notes }]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  assignments    EquipmentAssignment[]
+
+  @@map("equipment")
+}
+
+model EquipmentAssignment {
+  id               String    @id @default(uuid())
+  equipmentId      String
+  equipment        Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  employeeId       String
+  employee         Employee  @relation(fields: [employeeId], references: [id])
+  fecha_inicio     DateTime  @default(now())
+  fecha_fin        DateTime?
+  assignedByUserId String
+  assignedByUser   User      @relation("AssignedByUser", fields: [assignedByUserId], references: [id])
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("equipment_assignments")
+}
