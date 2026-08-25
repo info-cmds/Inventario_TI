@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('Login error:', error);
     return NextResponse.json(
-      { error: 'Error interno en inicio de sesión' },
+      { error: `Error de conexión a la base de datos: ${error?.message || 'Error interno'}` },
       { status: 500 }
     );
   }
