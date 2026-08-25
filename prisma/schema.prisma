@@ -177,9 +177,10 @@ model Equipment {
   vlan           String?
   ip_address     String?
   dynamic_values String                @default("{}") // JSON string of attribute key-values
-  status         String                @default("disponible") // disponible, asignado, en_reparacion, dado_de_baja
-  history_logs   String?               // JSON array of audit events: [{ id, timestamp, userId, userName, type, changes, notes }]
-  createdAt      DateTime              @default(now())
+  status             String                @default("disponible") // disponible, asignado, en_reparacion, dado_de_baja
+  history_logs       String?               // JSON array of audit events: [{ id, timestamp, userId, userName, type, changes, notes }]
+  attached_documents String                @default("[]") // JSON array of attached documents: [{ id, name, fileType, url, sizeBytes, uploadedAt, uploadedByName, notes }]
+  createdAt          DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
   assignments    EquipmentAssignment[]
 

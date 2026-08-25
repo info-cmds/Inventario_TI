@@ -28,6 +28,10 @@ import {
   Activity,
   FileText,
   History,
+  Paperclip,
+  Download,
+  File,
+  UploadCloud,
 } from 'lucide-react';
 import { DynamicAttributeDef } from '@/types';
 import Pagination from './Pagination';
@@ -212,9 +216,14 @@ export default function EquipmentView({
   const [decommissionReason, setDecommissionReason] = useState('');
   const [decommissionError, setDecommissionError] = useState('');
 
-  // Equipment Audit History Modal State
+  // Equipment Audit History & Documents Modal State
   const [isEqHistoryModalOpen, setIsEqHistoryModalOpen] = useState(false);
   const [selectedEqHistory, setSelectedEqHistory] = useState<any>(null);
+  const [historyActiveTab, setHistoryActiveTab] = useState<'timeline' | 'documents'>('timeline');
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [docNotes, setDocNotes] = useState('');
+  const [docError, setDocError] = useState('');
+  const [uploadingDoc, setUploadingDoc] = useState(false);
 
   const [error, setError] = useState('');
 
@@ -973,6 +982,63 @@ export default function EquipmentView({
     }
   };
 
+  const handleUploadDocument = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!docFile || !selectedEqHistory) return;
+    setDocError('');
+    setUploadingDoc(true);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result as string;
+
+        const res = await fetch(`/api/equipment/${selectedEqHistory.id}/documents`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: docFile.name,
+            fileType: docFile.type,
+            url: dataUrl,
+            sizeBytes: docFile.size,
+            notes: docNotes,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al adjuntar documento');
+
+        setSelectedEqHistory(data.equipment);
+        setEquipment((prev) => prev.map((eq) => (eq.id === data.equipment.id ? data.equipment : eq)));
+        setDocFile(null);
+        setDocNotes('');
+      };
+      reader.readAsDataURL(docFile);
+    } catch (err: any) {
+      setDocError(err.message);
+    } finally {
+      setUploadingDoc(false);
+    }
+  };
+
+  const handleDeleteDocument = async (docId: string) => {
+    if (!selectedEqHistory || !confirm('¿Está seguro de eliminar este documento adjunto?')) return;
+    try {
+      const res = await fetch(`/api/equipment/${selectedEqHistory.id}/documents`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ docId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al eliminar documento');
+
+      setSelectedEqHistory(data.equipment);
+      setEquipment((prev) => prev.map((eq) => (eq.id === data.equipment.id ? data.equipment : eq)));
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
   const getStatusBadge = (st: string) => {
     switch (st) {
       case 'disponible':
@@ -1148,11 +1214,17 @@ export default function EquipmentView({
                 return (
                   <tr
                     key={eq.id}
+                    onDoubleClick={() => {
+                      setSelectedEqHistory(eq);
+                      setHistoryActiveTab('timeline');
+                      setIsEqHistoryModalOpen(true);
+                    }}
                     className={
                       eq.status === 'dado_de_baja'
-                        ? 'bg-rose-50/40 hover:bg-rose-50/70 transition-colors'
-                        : 'hover:bg-slate-50'
+                        ? 'bg-rose-50/40 hover:bg-rose-50/70 transition-colors cursor-pointer'
+                        : 'hover:bg-slate-50 cursor-pointer'
                     }
+                    title="Doble clic para ver el historial y trazabilidad completa de auditoría de este equipo"
                   >
                     <td className="py-3 px-4">
                       <div className="font-mono font-bold text-slate-900">{eq.asset_tag}</div>
@@ -1249,12 +1321,34 @@ export default function EquipmentView({
                       <button
                         onClick={() => {
                           setSelectedEqHistory(eq);
+                          setHistoryActiveTab('timeline');
                           setIsEqHistoryModalOpen(true);
                         }}
-                        className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
                         title="Ver Historial y Trazabilidad de Auditoría Completa"
                       >
                         <History className="w-4 h-4 text-indigo-600" />
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setSelectedEqHistory(eq);
+                          setHistoryActiveTab('documents');
+                          setIsEqHistoryModalOpen(true);
+                        }}
+                        className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer relative"
+                        title="Ver y adjuntar documentos (Facturas, Garantías, Manuales)"
+                      >
+                        <Paperclip className="w-4 h-4 text-emerald-600" />
+                        {(() => {
+                          let docs: any[] = [];
+                          try { docs = JSON.parse(eq.attached_documents || '[]'); } catch(e){}
+                          return docs.length > 0 ? (
+                            <span className="absolute -top-1 -right-1 bg-emerald-600 text-white text-[9px] font-bold px-1 rounded-full">
+                              {docs.length}
+                            </span>
+                          ) : null;
+                        })()}
                       </button>
 
                       {userRole !== 'LECTOR' && (
@@ -2861,12 +2955,51 @@ export default function EquipmentView({
               </div>
             </div>
 
-            {/* Event Timeline */}
-            <div className="space-y-3">
-              <h4 className="font-bold text-slate-700 text-xs flex items-center space-x-2">
-                <History className="w-4 h-4 text-[#016098]" />
-                <span>Historial Cronológico de Cambios e Intervenciones</span>
-              </h4>
+            {/* Modal Tabs Header: Timeline vs Documents */}
+            <div className="flex border-b border-slate-200 space-x-2">
+              <button
+                type="button"
+                onClick={() => setHistoryActiveTab('timeline')}
+                className={`pb-2.5 px-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center space-x-1.5 ${
+                  historyActiveTab === 'timeline'
+                    ? 'border-[#016098] text-[#016098]'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <History className="w-4 h-4" />
+                <span>Historial & Trazabilidad</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setHistoryActiveTab('documents')}
+                className={`pb-2.5 px-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center space-x-1.5 ${
+                  historyActiveTab === 'documents'
+                    ? 'border-emerald-600 text-emerald-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <Paperclip className="w-4 h-4" />
+                <span>Documentos Adjuntos</span>
+                {(() => {
+                  let docs: any[] = [];
+                  try { docs = JSON.parse(selectedEqHistory.attached_documents || '[]'); } catch(e){}
+                  return (
+                    <span className="bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                      {docs.length}
+                    </span>
+                  );
+                })()}
+              </button>
+            </div>
+
+            {/* TAB 1: Event Timeline */}
+            {historyActiveTab === 'timeline' && (
+              <div className="space-y-3">
+                <h4 className="font-bold text-slate-700 text-xs flex items-center space-x-2">
+                  <History className="w-4 h-4 text-[#016098]" />
+                  <span>Historial Cronológico de Cambios e Intervenciones</span>
+                </h4>
 
               {(() => {
                 let logs: any[] = [];
@@ -2972,6 +3105,146 @@ export default function EquipmentView({
                 );
               })()}
             </div>
+            )}
+
+            {/* TAB 2: Attached Documents */}
+            {historyActiveTab === 'documents' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-700 text-xs flex items-center space-x-2">
+                    <Paperclip className="w-4 h-4 text-emerald-600" />
+                    <span>Documentos Digitales del Equipo (Facturas, Garantías, Manuales, Actas)</span>
+                  </h4>
+                </div>
+
+                {/* Upload Form */}
+                {userRole !== 'LECTOR' && (
+                  <form onSubmit={handleUploadDocument} className="bg-emerald-50/50 p-3.5 border border-emerald-200/80 rounded-xl space-y-3">
+                    <h5 className="text-xs font-bold text-emerald-900 flex items-center space-x-1.5">
+                      <UploadCloud className="w-4 h-4 text-emerald-600" />
+                      <span>Adjuntar Nuevo Documento / Archivo</span>
+                    </h5>
+
+                    {docError && (
+                      <div className="p-2 bg-rose-50 border border-rose-200 text-rose-700 text-[11px] rounded-lg font-semibold">
+                        {docError}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-700 mb-1">Seleccionar Archivo (PDF, Imagen, Word, Excel, etc.) *</label>
+                        <input
+                          type="file"
+                          required
+                          onChange={(e) => setDocFile(e.target.files?.[0] || null)}
+                          className="w-full text-xs text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-700 mb-1">Notas u Observaciones (Opcional)</label>
+                        <input
+                          type="text"
+                          value={docNotes}
+                          onChange={(e) => setDocNotes(e.target.value)}
+                          placeholder="Ej: Factura de compra proveedor o póliza de garantía"
+                          className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="submit"
+                        disabled={uploadingDoc || !docFile}
+                        className="px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs disabled:opacity-50 flex items-center space-x-1 cursor-pointer"
+                      >
+                        <UploadCloud className="w-3.5 h-3.5" />
+                        <span>{uploadingDoc ? 'Subiendo...' : 'Adjuntar Documento'}</span>
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* Document List */}
+                {(() => {
+                  let docs: any[] = [];
+                  try {
+                    docs = JSON.parse(selectedEqHistory.attached_documents || '[]');
+                  } catch (e) {}
+
+                  if (!Array.isArray(docs) || docs.length === 0) {
+                    return (
+                      <div className="p-6 text-center text-xs text-slate-400 italic bg-slate-50 rounded-xl border border-slate-200">
+                        No hay documentos ni archivos adjuntos para este equipo.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-2">
+                      {docs.map((doc: any) => {
+                        const sizeKb = doc.sizeBytes ? Math.round(doc.sizeBytes / 1024) : 0;
+                        const isPdf = doc.name.toLowerCase().endsWith('.pdf') || doc.fileType?.includes('pdf');
+                        const isImage = doc.fileType?.includes('image') || /\.(jpg|jpeg|png|gif|webp)$/i.test(doc.name);
+
+                        return (
+                          <div key={doc.id} className="p-3 bg-white border border-slate-200 rounded-xl hover:border-slate-300 transition-colors flex items-center justify-between gap-3 shadow-2xs">
+                            <div className="flex items-center space-x-3 min-w-0">
+                              <div className={`p-2.5 rounded-xl flex-shrink-0 ${isPdf ? 'bg-rose-100 text-rose-700' : isImage ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-700'}`}>
+                                {isPdf ? <FileText className="w-5 h-5" /> : <File className="w-5 h-5" />}
+                              </div>
+
+                              <div className="min-w-0">
+                                <h5 className="font-bold text-slate-900 text-xs truncate" title={doc.name}>
+                                  {doc.name}
+                                </h5>
+                                <div className="text-[10px] text-slate-500 flex flex-wrap items-center gap-x-2 mt-0.5 font-medium">
+                                  <span>📅 {doc.uploadedAt}</span>
+                                  <span>👤 {doc.uploadedByName || 'Usuario'}</span>
+                                  {sizeKb > 0 && <span className="font-mono">({sizeKb} KB)</span>}
+                                </div>
+                                {doc.notes && (
+                                  <p className="text-[11px] text-slate-600 italic mt-0.5 truncate">
+                                    📝 {doc.notes}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-2 flex-shrink-0">
+                              <a
+                                href={doc.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                download={doc.name}
+                                className="px-2.5 py-1 bg-[#016098] hover:bg-[#014d7a] text-white font-bold text-[11px] rounded-lg transition-colors flex items-center space-x-1 cursor-pointer"
+                                title="Ver / Descargar archivo"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                <span>Ver / Descargar</span>
+                              </a>
+
+                              {userRole !== 'LECTOR' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteDocument(doc.id)}
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Eliminar documento"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
             <div className="flex justify-end pt-2 border-t border-slate-100">
               <button
