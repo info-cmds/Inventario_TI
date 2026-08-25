@@ -292,7 +292,7 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="w-64 bg-white border border-slate-200/80 rounded-2xl shadow-xs flex flex-col shrink-0 min-h-[calc(100vh-6rem)] overflow-hidden">
+    <aside className="w-full lg:w-64 bg-white border border-slate-200/80 rounded-2xl shadow-xs flex flex-col shrink-0 h-full lg:min-h-[calc(100vh-6rem)] overflow-hidden">
       {/* Sidebar Header */}
       <div className="p-4 border-b border-slate-100 flex flex-col items-center justify-center space-y-2 bg-gradient-to-b from-slate-50 to-white">
         <img src="/logo-cmds.png" alt="CMDS Antofagasta" className="h-10 w-auto object-contain" />

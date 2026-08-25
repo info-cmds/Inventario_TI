@@ -648,7 +648,7 @@ export default function BranchesView({
 
           {/* Render Branches according to selected view mode */}
           {branchViewMode === 'list' ? (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-x-auto">
               {filteredBranches.length > 0 ? (
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold">
@@ -847,7 +847,7 @@ export default function BranchesView({
             )}
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-x-auto">
             {departments.length > 0 ? (
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold">

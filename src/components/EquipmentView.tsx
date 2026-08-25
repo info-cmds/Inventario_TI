@@ -1128,7 +1128,7 @@ export default function EquipmentView({
       {loading ? (
         <div className="p-8 text-center text-slate-500 font-medium">Cargando inventario de equipos...</div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold">
               <tr>

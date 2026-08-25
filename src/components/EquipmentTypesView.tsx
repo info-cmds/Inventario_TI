@@ -868,7 +868,7 @@ export default function EquipmentTypesView({
 
       {/* TAB 3: MODELS LIST TABLE */}
       {activeTab === 'models' && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold">
               <tr>

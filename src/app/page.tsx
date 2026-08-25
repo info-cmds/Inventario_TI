@@ -27,6 +27,9 @@ export default function Home() {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isForcedPasswordChange, setIsForcedPasswordChange] = useState(false);
 
+  // Mobile Drawer Navigation State
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   // App Data
   const [sectors, setSectors] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
@@ -196,45 +199,99 @@ export default function Home() {
           setIsForcedPasswordChange(false);
           setIsPasswordModalOpen(true);
         }}
+        isMobileSidebarOpen={isMobileSidebarOpen}
+        onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
       />
 
       {/* Main Container */}
-      <div className="flex flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 gap-6">
-        {/* Sidebar */}
-        <Sidebar
-          currentTab={currentTab}
-          onTabChange={(tab, secId, subTab, bId, dId, eqTag) => {
-            if (secId !== undefined) setSelectedSectorId(secId);
-            if (bId !== undefined) setSelectedBranchId(bId); else setSelectedBranchId('');
-            if (dId !== undefined) setSelectedDepartmentId(dId); else setSelectedDepartmentId('');
-            if (eqTag !== undefined) setSelectedEquipmentTag(eqTag); else setSelectedEquipmentTag('');
-            if (subTab) setBranchesSubTab(subTab);
-            setCurrentTab(tab);
-          }}
-          userRole={user.role}
-          sectors={sectors}
-          branches={branches}
-          departments={departments}
-          equipment={equipment}
-          onSelectSector={(id) => {
-            setSelectedSectorId(id);
-            setSelectedBranchId('');
-            setSelectedDepartmentId('');
-          }}
-          onSelectBranch={(id) => {
-            setSelectedBranchId(id);
-            if (id) {
-              const b = branches.find((x) => x.id === id);
-              if (b && b.sectorId) setSelectedSectorId(b.sectorId);
-            }
-            setSelectedDepartmentId('');
-          }}
-          selectedSectorId={selectedSectorId}
-          selectedBranchId={selectedBranchId}
-          selectedDepartmentId={selectedDepartmentId}
-          selectedEquipmentTag={selectedEquipmentTag}
-          branchesSubTab={branchesSubTab}
-        />
+      <div className="flex flex-1 w-full px-3 sm:px-6 lg:px-8 py-4 sm:py-6 gap-4 sm:gap-6">
+        {/* Desktop Sidebar (hidden on mobile) */}
+        <div className="hidden lg:block">
+          <Sidebar
+            currentTab={currentTab}
+            onTabChange={(tab, secId, subTab, bId, dId, eqTag) => {
+              if (secId !== undefined) setSelectedSectorId(secId);
+              if (bId !== undefined) setSelectedBranchId(bId); else setSelectedBranchId('');
+              if (dId !== undefined) setSelectedDepartmentId(dId); else setSelectedDepartmentId('');
+              if (eqTag !== undefined) setSelectedEquipmentTag(eqTag); else setSelectedEquipmentTag('');
+              if (subTab) setBranchesSubTab(subTab);
+              setCurrentTab(tab);
+            }}
+            userRole={user.role}
+            sectors={sectors}
+            branches={branches}
+            departments={departments}
+            equipment={equipment}
+            onSelectSector={(id) => {
+              setSelectedSectorId(id);
+              setSelectedBranchId('');
+              setSelectedDepartmentId('');
+            }}
+            onSelectBranch={(id) => {
+              setSelectedBranchId(id);
+              if (id) {
+                const b = branches.find((x) => x.id === id);
+                if (b && b.sectorId) setSelectedSectorId(b.sectorId);
+              }
+              setSelectedDepartmentId('');
+            }}
+            selectedSectorId={selectedSectorId}
+            selectedBranchId={selectedBranchId}
+            selectedDepartmentId={selectedDepartmentId}
+            selectedEquipmentTag={selectedEquipmentTag}
+            branchesSubTab={branchesSubTab}
+          />
+        </div>
+
+        {/* Mobile Slide-Over Sidebar Drawer */}
+        {isMobileSidebarOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden flex">
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+              onClick={() => setIsMobileSidebarOpen(false)}
+            />
+
+            {/* Slide-over panel */}
+            <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white shadow-2xl z-10 my-2 ml-2 rounded-2xl overflow-hidden">
+              <Sidebar
+                currentTab={currentTab}
+                onTabChange={(tab, secId, subTab, bId, dId, eqTag) => {
+                  if (secId !== undefined) setSelectedSectorId(secId);
+                  if (bId !== undefined) setSelectedBranchId(bId); else setSelectedBranchId('');
+                  if (dId !== undefined) setSelectedDepartmentId(dId); else setSelectedDepartmentId('');
+                  if (eqTag !== undefined) setSelectedEquipmentTag(eqTag); else setSelectedEquipmentTag('');
+                  if (subTab) setBranchesSubTab(subTab);
+                  setCurrentTab(tab);
+                  setIsMobileSidebarOpen(false); // Auto close mobile drawer on tab click!
+                }}
+                userRole={user.role}
+                sectors={sectors}
+                branches={branches}
+                departments={departments}
+                equipment={equipment}
+                onSelectSector={(id) => {
+                  setSelectedSectorId(id);
+                  setSelectedBranchId('');
+                  setSelectedDepartmentId('');
+                }}
+                onSelectBranch={(id) => {
+                  setSelectedBranchId(id);
+                  if (id) {
+                    const b = branches.find((x) => x.id === id);
+                    if (b && b.sectorId) setSelectedSectorId(b.sectorId);
+                  }
+                  setSelectedDepartmentId('');
+                }}
+                selectedSectorId={selectedSectorId}
+                selectedBranchId={selectedBranchId}
+                selectedDepartmentId={selectedDepartmentId}
+                selectedEquipmentTag={selectedEquipmentTag}
+                branchesSubTab={branchesSubTab}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Dynamic Main Workspace Content */}
         <main className="flex-1 min-w-0">
