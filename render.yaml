@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: inventario-ti-web
+    env: node
+    plan: free
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: inventario-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+
+databases:
+  - name: inventario-db
+    databaseName: inventario_ti
+    user: cmds_admin
+    plan: free

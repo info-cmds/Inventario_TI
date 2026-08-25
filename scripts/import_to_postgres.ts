@@ -4,7 +4,7 @@ import path from 'path';
 
 const prisma = new PrismaClient();
 
-async function importData() {
+export async function importData() {
   console.log('🚀 Iniciando restauración/importación de datos a PostgreSQL...');
 
   const dumpPath = path.join(process.cwd(), 'prisma', 'production_data_dump.json');
