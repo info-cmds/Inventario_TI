@@ -5,7 +5,7 @@ import path from 'path';
 const prisma = new PrismaClient();
 
 export async function importData() {
-  console.log('🚀 Iniciando restauración/importación de datos a PostgreSQL...');
+  console.log('🚀 Iniciando restauración ultra-rápida de datos a Neon PostgreSQL...');
 
   const dumpPath = path.join(process.cwd(), 'prisma', 'production_data_dump.json');
   if (!fs.existsSync(dumpPath)) {
@@ -20,301 +20,136 @@ export async function importData() {
 
   // 1. Sectors
   console.log(`⏳ Cargando ${data.sectors.length} sectores...`);
-  for (const item of data.sectors) {
-    await prisma.sector.upsert({
-      where: { id: item.id },
-      update: {
-        name: item.name,
-        description: item.description,
-        status: item.status,
-      },
-      create: {
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        status: item.status,
-        createdAt: new Date(item.createdAt),
-        updatedAt: new Date(item.updatedAt),
-      },
-    });
-  }
+  await prisma.sector.createMany({
+    data: data.sectors.map((s: any) => ({
+      ...s,
+      createdAt: new Date(s.createdAt),
+      updatedAt: new Date(s.updatedAt),
+    })),
+    skipDuplicates: true,
+  });
 
   // 2. Branches
   console.log(`⏳ Cargando ${data.branches.length} sucursales...`);
-  for (const item of data.branches) {
-    await prisma.branch.upsert({
-      where: { id: item.id },
-      update: {
-        name: item.name,
-        code: item.code,
-        sectorId: item.sectorId,
-        status: item.status,
-      },
-      create: {
-        id: item.id,
-        name: item.name,
-        code: item.code,
-        sectorId: item.sectorId,
-        status: item.status,
-        createdAt: new Date(item.createdAt),
-        updatedAt: new Date(item.updatedAt),
-      },
-    });
-  }
+  await prisma.branch.createMany({
+    data: data.branches.map((b: any) => ({
+      ...b,
+      createdAt: new Date(b.createdAt),
+      updatedAt: new Date(b.updatedAt),
+    })),
+    skipDuplicates: true,
+  });
 
   // 3. Departments
   console.log(`⏳ Cargando ${data.departments.length} departamentos...`);
-  for (const item of data.departments) {
-    await prisma.department.upsert({
-      where: { id: item.id },
-      update: {
-        name: item.name,
-        vlan: item.vlan,
-        branchId: item.branchId,
-      },
-      create: {
-        id: item.id,
-        name: item.name,
-        vlan: item.vlan,
-        branchId: item.branchId,
-        createdAt: new Date(item.createdAt),
-        updatedAt: new Date(item.updatedAt),
-      },
-    });
-  }
+  await prisma.department.createMany({
+    data: data.departments.map((d: any) => ({
+      ...d,
+      createdAt: new Date(d.createdAt),
+      updatedAt: new Date(d.updatedAt),
+    })),
+    skipDuplicates: true,
+  });
 
   // 4. Users (Credenciales & Passwords Hashed)
   console.log(`⏳ Cargando ${data.users.length} usuarios y credenciales...`);
-  for (const item of data.users) {
-    await prisma.user.upsert({
-      where: { id: item.id },
-      update: {
-        email: item.email,
-        name: item.name,
-        password: item.password,
-        role: item.role,
-        must_change_password: item.must_change_password,
-      },
-      create: {
-        id: item.id,
-        email: item.email,
-        name: item.name,
-        password: item.password,
-        role: item.role,
-        must_change_password: item.must_change_password,
-        createdAt: new Date(item.createdAt),
-        updatedAt: new Date(item.updatedAt),
-      },
-    });
-  }
+  await prisma.user.createMany({
+    data: data.users.map((u: any) => ({
+      ...u,
+      createdAt: new Date(u.createdAt),
+      updatedAt: new Date(u.updatedAt),
+    })),
+    skipDuplicates: true,
+  });
 
   // 5. UserBranchPermissions
   console.log(`⏳ Cargando ${data.userBranchPermissions.length} permisos de usuario...`);
-  for (const item of data.userBranchPermissions) {
-    await prisma.userBranchPermission.upsert({
-      where: { id: item.id },
-      update: {
-        userId: item.userId,
-        sectorId: item.sectorId,
-        branchId: item.branchId,
-        departmentId: item.departmentId,
-      },
-      create: {
-        id: item.id,
-        userId: item.userId,
-        sectorId: item.sectorId,
-        branchId: item.branchId,
-        departmentId: item.departmentId,
-      },
-    });
-  }
+  await prisma.userBranchPermission.createMany({
+    data: data.userBranchPermissions,
+    skipDuplicates: true,
+  });
 
   // 6. EquipmentTypes
   console.log(`⏳ Cargando ${data.equipmentTypes.length} tipos de equipos...`);
-  for (const item of data.equipmentTypes) {
-    await prisma.equipmentType.upsert({
-      where: { id: item.id },
-      update: {
-        name: item.name,
-        sectorId: item.sectorId,
-        description: item.description,
-        dynamic_attributes: item.dynamic_attributes,
-        associated_brands: item.associated_brands,
-      },
-      create: {
-        id: item.id,
-        name: item.name,
-        sectorId: item.sectorId,
-        description: item.description,
-        dynamic_attributes: item.dynamic_attributes,
-        associated_brands: item.associated_brands,
-        createdAt: new Date(item.createdAt),
-        updatedAt: new Date(item.updatedAt),
-      },
-    });
-  }
+  await prisma.equipmentType.createMany({
+    data: data.equipmentTypes.map((t: any) => ({
+      ...t,
+      createdAt: new Date(t.createdAt),
+      updatedAt: new Date(t.updatedAt),
+    })),
+    skipDuplicates: true,
+  });
 
   // 7. Brands
   console.log(`⏳ Cargando ${data.brands.length} marcas...`);
-  for (const item of data.brands) {
-    await prisma.brand.upsert({
-      where: { id: item.id },
-      update: {
-        name: item.name,
-        sectorId: item.sectorId,
-      },
-      create: {
-        id: item.id,
-        name: item.name,
-        sectorId: item.sectorId,
-        createdAt: new Date(item.createdAt),
-        updatedAt: new Date(item.updatedAt),
-      },
-    });
-  }
+  await prisma.brand.createMany({
+    data: data.brands.map((b: any) => ({
+      ...b,
+      createdAt: new Date(b.createdAt),
+      updatedAt: new Date(b.updatedAt),
+    })),
+    skipDuplicates: true,
+  });
 
   // 8. EquipmentModels
   console.log(`⏳ Cargando ${data.equipmentModels.length} modelos de equipos...`);
-  for (const item of data.equipmentModels) {
-    await prisma.equipmentModel.upsert({
-      where: { id: item.id },
-      update: {
-        name: item.name,
-        sectorId: item.sectorId,
-        brandId: item.brandId,
-        typeId: item.typeId,
-        ram: item.ram,
-        processor: item.processor,
-        storage: item.storage,
-        specs: item.specs,
-      },
-      create: {
-        id: item.id,
-        name: item.name,
-        sectorId: item.sectorId,
-        brandId: item.brandId,
-        typeId: item.typeId,
-        ram: item.ram,
-        processor: item.processor,
-        storage: item.storage,
-        specs: item.specs,
-        createdAt: new Date(item.createdAt),
-        updatedAt: new Date(item.updatedAt),
-      },
-    });
-  }
+  await prisma.equipmentModel.createMany({
+    data: data.equipmentModels.map((m: any) => ({
+      ...m,
+      createdAt: new Date(m.createdAt),
+      updatedAt: new Date(m.updatedAt),
+    })),
+    skipDuplicates: true,
+  });
 
-  // 9. Employees
-  console.log(`⏳ Cargando ${data.employees.length} funcionarios...`);
-  for (const item of data.employees) {
-    await prisma.employee.upsert({
-      where: { id: item.id },
-      update: {
-        rut_document: item.rut_document,
-        names: item.names,
-        paternal_surname: item.paternal_surname,
-        maternal_surname: item.maternal_surname,
-        full_name: item.full_name,
-        email: item.email,
-        position: item.position,
-        branchId: item.branchId,
-        departmentId: item.departmentId,
-        status: item.status,
-        history_logs: item.history_logs,
-      },
-      create: {
-        id: item.id,
-        rut_document: item.rut_document,
-        names: item.names,
-        paternal_surname: item.paternal_surname,
-        maternal_surname: item.maternal_surname,
-        full_name: item.full_name,
-        email: item.email,
-        position: item.position,
-        branchId: item.branchId,
-        departmentId: item.departmentId,
-        status: item.status,
-        history_logs: item.history_logs,
-        createdAt: new Date(item.createdAt),
-        updatedAt: new Date(item.updatedAt),
-      },
-    });
-  }
+  // 9. Employees (Bulk import 2,070 records in 1 batch)
+  console.log(`⏳ Cargando ${data.employees.length} funcionarios en lote rápido...`);
+  const employeesBatch = data.employees.map((e: any) => ({
+    ...e,
+    createdAt: new Date(e.createdAt),
+    updatedAt: new Date(e.updatedAt),
+  }));
+  await prisma.employee.createMany({
+    data: employeesBatch,
+    skipDuplicates: true,
+  });
 
   // 10. Equipment
   console.log(`⏳ Cargando ${data.equipment.length} equipos...`);
-  for (const item of data.equipment) {
-    await prisma.equipment.upsert({
-      where: { id: item.id },
-      update: {
-        asset_tag: item.asset_tag,
-        serial_number: item.serial_number,
-        typeId: item.typeId,
-        brandId: item.brandId,
-        modelId: item.modelId,
-        branchId: item.branchId,
-        departmentId: item.departmentId,
-        vlan: item.vlan,
-        ip_address: item.ip_address,
-        dynamic_values: item.dynamic_values,
-        status: item.status,
-        history_logs: item.history_logs,
-      },
-      create: {
-        id: item.id,
-        asset_tag: item.asset_tag,
-        serial_number: item.serial_number,
-        typeId: item.typeId,
-        brandId: item.brandId,
-        modelId: item.modelId,
-        branchId: item.branchId,
-        departmentId: item.departmentId,
-        vlan: item.vlan,
-        ip_address: item.ip_address,
-        dynamic_values: item.dynamic_values,
-        status: item.status,
-        history_logs: item.history_logs,
-        createdAt: new Date(item.createdAt),
-        updatedAt: new Date(item.updatedAt),
-      },
-    });
-  }
+  const equipmentBatch = data.equipment.map((eq: any) => ({
+    ...eq,
+    createdAt: new Date(eq.createdAt),
+    updatedAt: new Date(eq.updatedAt),
+  }));
+  await prisma.equipment.createMany({
+    data: equipmentBatch,
+    skipDuplicates: true,
+  });
 
   // 11. EquipmentAssignments
-  console.log(`⏳ Cargando ${data.equipmentAssignments.length} asignaciones e historial...`);
-  for (const item of data.equipmentAssignments) {
-    await prisma.equipmentAssignment.upsert({
-      where: { id: item.id },
-      update: {
-        equipmentId: item.equipmentId,
-        employeeId: item.employeeId,
-        fecha_inicio: new Date(item.fecha_inicio),
-        fecha_fin: item.fecha_fin ? new Date(item.fecha_fin) : null,
-        assignedByUserId: item.assignedByUserId,
-        notes: item.notes,
-      },
-      create: {
-        id: item.id,
-        equipmentId: item.equipmentId,
-        employeeId: item.employeeId,
-        fecha_inicio: new Date(item.fecha_inicio),
-        fecha_fin: item.fecha_fin ? new Date(item.fecha_fin) : null,
-        assignedByUserId: item.assignedByUserId,
-        notes: item.notes,
-        createdAt: new Date(item.createdAt),
-        updatedAt: new Date(item.updatedAt),
-      },
-    });
-  }
+  console.log(`⏳ Cargando ${data.equipmentAssignments.length} asignaciones...`);
+  const assignmentsBatch = data.equipmentAssignments.map((a: any) => ({
+    ...a,
+    fecha_inicio: new Date(a.fecha_inicio),
+    fecha_fin: a.fecha_fin ? new Date(a.fecha_fin) : null,
+    createdAt: new Date(a.createdAt),
+    updatedAt: new Date(a.updatedAt),
+  }));
+  await prisma.equipmentAssignment.createMany({
+    data: assignmentsBatch,
+    skipDuplicates: true,
+  });
 
-  console.log('🎉 ¡RESTAURACIÓN Y MIGRACIÓN COMPLETADA EXITOSAMENTE CON 100% DE REGISTROS!');
+  console.log('🎉 ¡RESTAURACIÓN Y MIGRACIÓN COMPLETADA EXITOSAMENTE EN SEGUNDOS!');
 }
 
-importData()
-  .catch((e) => {
-    console.error('❌ Error durante la importación:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (require.main === module) {
+  importData()
+    .catch((e) => {
+      console.error('❌ Error durante la importación:', e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
