@@ -72,9 +72,21 @@ export async function GET(req: NextRequest) {
         branch: { include: { sector: true } },
         department: true,
         assignments: {
-          include: {
+          where: { fecha_fin: null },
+          select: {
+            id: true,
+            fecha_inicio: true,
+            notes: true,
             equipment: {
-              include: { type: true, brand: true, model: true },
+              select: {
+                id: true,
+                asset_tag: true,
+                serial_number: true,
+                status: true,
+                type: { select: { id: true, name: true } },
+                brand: { select: { id: true, name: true } },
+                model: { select: { id: true, name: true } },
+              },
             },
           },
           orderBy: { createdAt: 'desc' },

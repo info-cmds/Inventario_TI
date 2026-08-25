@@ -59,9 +59,6 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
                 src="/logo-cmds-login.png"
                 alt="CMDS Logo"
                 className="h-24 w-auto object-contain mx-auto"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/logo-cmds.png';
-                }}
               />
             </div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900">

@@ -15,59 +15,95 @@ export async function GET(req: NextRequest) {
 
     const branchFilter = filterByBranchPermissions(sessionUser, filterBranchId, filterSectorId);
 
-    // Equipment Metrics
-    const totalEquipment = await prisma.equipment.count({
-      where: branchFilter,
-    });
-
-    const disponibleCount = await prisma.equipment.count({
-      where: { ...branchFilter, status: 'disponible' },
-    });
-
-    const asignadoCount = await prisma.equipment.count({
-      where: { ...branchFilter, status: 'asignado' },
-    });
-
-    const reparacionCount = await prisma.equipment.count({
-      where: { ...branchFilter, status: 'en_reparacion' },
-    });
-
-    const dadoDeBajaCount = await prisma.equipment.count({
-      where: { ...branchFilter, status: 'dado_de_baja' },
-    });
-
-    // Total Employees Metric
-    const totalEmployees = await prisma.employee.count({
-      where: branchFilter,
-    });
-
-    // Branch Summary Cards Data
-    const branches = await prisma.branch.findMany({
-      where:
-        sessionUser.role === 'SUPERADMIN'
-          ? {
-              ...(filterBranchId ? { id: filterBranchId } : {}),
-              ...(filterSectorId ? { sectorId: filterSectorId } : {}),
-            }
-          : {
-              id: { in: sessionUser.branchPermissions.map((p) => p.branchId) },
-              ...(filterBranchId ? { id: filterBranchId } : {}),
-              ...(filterSectorId ? { sectorId: filterSectorId } : {}),
+    // Parallel execution of all dashboard aggregations
+    const [
+      statusGroup,
+      totalEquipment,
+      totalEmployees,
+      branches,
+      equipmentTypes,
+      departments,
+      unassignedDeptCount,
+    ] = await Promise.all([
+      prisma.equipment.groupBy({
+        by: ['status'],
+        where: branchFilter,
+        _count: true,
+      }),
+      prisma.equipment.count({ where: branchFilter }),
+      prisma.employee.count({ where: branchFilter }),
+      prisma.branch.findMany({
+        where:
+          sessionUser.role === 'SUPERADMIN'
+            ? {
+                ...(filterBranchId ? { id: filterBranchId } : {}),
+                ...(filterSectorId ? { sectorId: filterSectorId } : {}),
+              }
+            : {
+                id: { in: sessionUser.branchPermissions.map((p) => p.branchId) },
+                ...(filterBranchId ? { id: filterBranchId } : {}),
+                ...(filterSectorId ? { sectorId: filterSectorId } : {}),
+              },
+        include: {
+          _count: {
+            select: {
+              equipment: true,
+              employees: true,
             },
-      include: {
-        _count: {
-          select: {
-            equipment: true,
-            employees: true,
+          },
+          equipment: {
+            select: {
+              status: true,
+            },
           },
         },
-        equipment: {
-          select: {
-            status: true,
+      }),
+      prisma.equipmentType.findMany({
+        include: {
+          equipment: {
+            where: branchFilter,
+            select: { id: true },
           },
         },
-      },
-    });
+      }),
+      prisma.department.findMany({
+        where:
+          sessionUser.role === 'SUPERADMIN'
+            ? {
+                ...(filterBranchId ? { branchId: filterBranchId } : {}),
+                ...(filterSectorId ? { branch: { sectorId: filterSectorId } } : {}),
+              }
+            : {
+                branchId: { in: sessionUser.branchPermissions.map((p) => p.branchId) },
+                ...(filterBranchId ? { branchId: filterBranchId } : {}),
+                ...(filterSectorId ? { branch: { sectorId: filterSectorId } } : {}),
+              },
+        include: {
+          equipment: {
+            where: branchFilter,
+            select: { id: true },
+          },
+        },
+        orderBy: { name: 'asc' },
+      }),
+      prisma.equipment.count({
+        where: {
+          ...branchFilter,
+          departmentId: null,
+        },
+      }),
+    ]);
+
+    // Parse status counts from groupBy
+    const statusMap = statusGroup.reduce((acc, curr) => {
+      acc[curr.status] = curr._count;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const disponibleCount = statusMap['disponible'] || 0;
+    const asignadoCount = statusMap['asignado'] || 0;
+    const reparacionCount = statusMap['en_reparacion'] || 0;
+    const dadoDeBajaCount = statusMap['dado_de_baja'] || 0;
 
     const branchSummaries = branches.map((b) => {
       const disponible = b.equipment.filter((e) => e.status === 'disponible').length;
@@ -89,55 +125,16 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Equipment Type Distribution
-    const equipmentTypes = await prisma.equipmentType.findMany({
-      include: {
-        equipment: {
-          where: branchFilter,
-          select: { id: true },
-        },
-      },
-    });
-
     const typeDistribution = equipmentTypes.map((t) => ({
       name: t.name,
       count: t.equipment.length,
     }));
-
-    // Equipment Department Distribution
-    const departments = await prisma.department.findMany({
-      where:
-        sessionUser.role === 'SUPERADMIN'
-          ? {
-              ...(filterBranchId ? { branchId: filterBranchId } : {}),
-              ...(filterSectorId ? { branch: { sectorId: filterSectorId } } : {}),
-            }
-          : {
-              branchId: { in: sessionUser.branchPermissions.map((p) => p.branchId) },
-              ...(filterBranchId ? { branchId: filterBranchId } : {}),
-              ...(filterSectorId ? { branch: { sectorId: filterSectorId } } : {}),
-            },
-      include: {
-        equipment: {
-          where: branchFilter,
-          select: { id: true },
-        },
-      },
-      orderBy: { name: 'asc' },
-    });
 
     const departmentDistribution = departments.map((d) => ({
       id: d.id,
       name: d.name,
       count: d.equipment.length,
     }));
-
-    const unassignedDeptCount = await prisma.equipment.count({
-      where: {
-        ...branchFilter,
-        departmentId: null,
-      },
-    });
 
     if (unassignedDeptCount > 0) {
       departmentDistribution.push({
