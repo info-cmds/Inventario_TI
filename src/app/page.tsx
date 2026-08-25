@@ -320,6 +320,7 @@ export default function Home() {
 
           {currentTab === 'assignments' && (
             <AssignmentsView
+              userRole={user.role}
               selectedSectorId={selectedSectorId}
               selectedBranchId={selectedBranchId}
             />

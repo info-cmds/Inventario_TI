@@ -27,7 +27,9 @@ export async function GET(req: NextRequest) {
         equipment: {
           include: {
             type: true,
-            branch: true,
+            brand: true,
+            model: true,
+            branch: { include: { sector: true } },
             department: true,
           },
         },
