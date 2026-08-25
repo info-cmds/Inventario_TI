@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:backend": "tsx scripts/backend_test_suite.ts"
+    "test:backend": "tsx scripts/backend_test_suite.ts",
+    "db:export": "tsx scripts/export_sqlite_data.ts",
+    "db:import": "tsx scripts/import_to_postgres.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
