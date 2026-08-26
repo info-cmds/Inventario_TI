@@ -66,6 +66,7 @@ export default function EquipmentTypesView({
   const [attrKey, setAttrKey] = useState('');
   const [attrLabel, setAttrLabel] = useState('');
   const [attrType, setAttrType] = useState<'text' | 'number' | 'select' | 'boolean'>('text');
+  const [attrOptions, setAttrOptions] = useState('');
 
   // Brand Modal State
   const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
@@ -176,6 +177,7 @@ export default function EquipmentTypesView({
     setAttrKey('');
     setAttrLabel('');
     setAttrType('text');
+    setAttrOptions('');
     setIsTypeModalOpen(true);
   };
 
@@ -188,17 +190,33 @@ export default function EquipmentTypesView({
   };
 
   const handleAddAttribute = () => {
-    if (!attrKey || !attrLabel) return;
-    const cleanKey = attrKey.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    if (!attrLabel || !attrLabel.trim()) return;
+    const rawKey = attrKey.trim() || attrLabel.trim();
+    const cleanKey = rawKey.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_');
     if (attributes.some((a) => a.key === cleanKey)) {
-      alert('Ya existe un atributo con esta clave');
+      alert('Ya existe un atributo con esta clave o nombre.');
       return;
     }
 
-    setAttributes([...attributes, { key: cleanKey, label: attrLabel, type: attrType }]);
+    const optionsArray =
+      attrType === 'select'
+        ? attrOptions.split(',').map((o) => o.trim()).filter(Boolean)
+        : undefined;
+
+    setAttributes([
+      ...attributes,
+      {
+        key: cleanKey,
+        label: attrLabel.trim(),
+        type: attrType,
+        ...(optionsArray && optionsArray.length > 0 ? { options: optionsArray } : {}),
+      },
+    ]);
+
     setAttrKey('');
     setAttrLabel('');
     setAttrType('text');
+    setAttrOptions('');
   };
 
   const handleRemoveAttribute = (key: string) => {
@@ -1009,6 +1027,130 @@ export default function EquipmentTypesView({
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#016098] outline-none"
                 />
               </div>
+
+              {/* ATRIBUTOS PERSONALIZADOS / ESPECIFICACIONES DE TIPO */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                <span className="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+                  <Sliders className="w-4 h-4 text-[#016098]" />
+                  <span>Atributos Personalizados ({attributes.length})</span>
+                </span>
+
+                {/* Form to add a new custom attribute */}
+                <div className="space-y-2 p-2 bg-white rounded-lg border border-slate-200">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Nombre / Etiqueta *</label>
+                      <input
+                        type="text"
+                        value={attrLabel}
+                        onChange={(e) => setAttrLabel(e.target.value)}
+                        placeholder="Ej: Procesador, RAM, Disco"
+                        className="w-full px-2 py-1 text-xs border border-slate-300 rounded-md outline-none focus:ring-1 focus:ring-[#016098]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Tipo de Dato</label>
+                      <select
+                        value={attrType}
+                        onChange={(e: any) => setAttrType(e.target.value)}
+                        className="w-full px-2 py-1 text-xs border border-slate-300 rounded-md outline-none focus:ring-1 focus:ring-[#016098]"
+                      >
+                        <option value="text">Texto</option>
+                        <option value="number">Número</option>
+                        <option value="select">Selección / Opciones</option>
+                        <option value="boolean">Booleano (Sí/No)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {attrType === 'select' && (
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Opciones (separadas por coma)</label>
+                      <input
+                        type="text"
+                        value={attrOptions}
+                        onChange={(e) => setAttrOptions(e.target.value)}
+                        placeholder="Ej: 128GB, 256GB, 512GB, 1TB"
+                        className="w-full px-2 py-1 text-xs border border-slate-300 rounded-md outline-none focus:ring-1 focus:ring-[#016098]"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleAddAttribute}
+                      disabled={!attrLabel.trim()}
+                      className="px-3 py-1 bg-[#016098] hover:bg-[#014d7a] text-white font-bold text-xs rounded-lg transition-colors cursor-pointer flex items-center space-x-1 disabled:opacity-50"
+                    >
+                      <PlusCircle className="w-3.5 h-3.5" />
+                      <span>+ Agregar Atributo</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* List of currently defined attributes */}
+                {attributes.length > 0 ? (
+                  <div className="space-y-1 max-h-36 overflow-y-auto">
+                    {attributes.map((attr) => (
+                      <div
+                        key={attr.key}
+                        className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-200 text-xs"
+                      >
+                        <div>
+                          <span className="font-bold text-slate-800">{attr.label}</span>
+                          <span className="text-[10px] text-slate-400 font-mono ml-2">
+                            [{attr.key}] • {attr.type}
+                            {attr.options && attr.options.length > 0 ? ` (${attr.options.join(', ')})` : ''}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAttribute(attr.key)}
+                          className="text-rose-500 hover:text-rose-700 font-bold px-1.5 py-0.5 hover:bg-rose-50 rounded"
+                          title="Eliminar atributo"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-400 italic text-center py-1">
+                    No se han definido atributos personalizados aún.
+                  </p>
+                )}
+              </div>
+
+              {/* MARCAS ASOCIADAS */}
+              {brands.length > 0 && (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <span className="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+                    <Tag className="w-4 h-4 text-[#F7A517]" />
+                    <span>Marcas Asociadas ({selectedBrandIds.length})</span>
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pt-1">
+                    {brands.map((b) => {
+                      const isSelected = selectedBrandIds.includes(b.id);
+                      return (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => toggleBrandAssociation(b.id)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center space-x-1 ${
+                            isSelected
+                              ? 'bg-[#F7A517] text-white border-[#F7A517] shadow-xs'
+                              : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3 h-3" />}
+                          <span>{b.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end space-x-3 pt-2">
                 <button

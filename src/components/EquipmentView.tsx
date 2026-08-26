@@ -1788,14 +1788,29 @@ export default function EquipmentView({
                             onChange={(e) =>
                               setDynamicValues({ ...dynamicValues, [attr.key]: e.target.value === 'true' })
                             }
-                            className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg outline-none bg-white"
+                            className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg outline-none bg-white font-medium"
                           >
                             <option value="true">Sí</option>
                             <option value="false">No</option>
                           </select>
+                        ) : attr.type === 'select' && attr.options && attr.options.length > 0 ? (
+                          <select
+                            value={dynamicValues[attr.key] ?? ''}
+                            onChange={(e) =>
+                              setDynamicValues({ ...dynamicValues, [attr.key]: e.target.value })
+                            }
+                            className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg outline-none bg-white font-semibold text-slate-800"
+                          >
+                            <option value="">Seleccionar...</option>
+                            {attr.options.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
                         ) : (
                           <input
-                            type="text"
+                            type={attr.type === 'number' ? 'number' : 'text'}
                             value={dynamicValues[attr.key] ?? ''}
                             onChange={(e) =>
                               setDynamicValues({ ...dynamicValues, [attr.key]: e.target.value })
@@ -1918,19 +1933,40 @@ export default function EquipmentView({
                   <Sliders className="w-3.5 h-3.5 text-[#39BABD]" />
                   <span>Especificaciones Técnicas</span>
                 </h4>
-                {selectedEq.dynamic_values && selectedEq.dynamic_values !== '{}' ? (
-                  <div className="grid grid-cols-2 gap-2 border border-slate-200 p-3 rounded-xl bg-white">
-                    {Object.entries(JSON.parse(selectedEq.dynamic_values || '{}'))
-                      .filter(([k]) => !k.startsWith('_'))
-                      .map(([k, v]) => (
-                        <div key={k}>
-                          <span className="text-slate-400 text-[10px] block uppercase">{k}</span>
-                          <span className="font-bold text-slate-800">{String(v)}</span>
-                        </div>
-                      ))}
-                  </div>
-                ) : (
-                  <p className="text-slate-400 italic">Sin especificaciones registradas.</p>
+                {selectedEq.dynamic_values && selectedEq.dynamic_values !== '{}' ? (() => {
+                  let parsedValues: Record<string, any> = {};
+                  try { parsedValues = JSON.parse(selectedEq.dynamic_values || '{}'); } catch (e) {}
+
+                  let typeAttrDefs: DynamicAttributeDef[] = [];
+                  try { typeAttrDefs = JSON.parse(selectedEq.type?.dynamic_attributes || '[]'); } catch (e) {}
+
+                  const labelMap: Record<string, string> = {};
+                  typeAttrDefs.forEach((def) => {
+                    labelMap[def.key] = def.label;
+                  });
+
+                  const filteredEntries = Object.entries(parsedValues).filter(([k]) => !k.startsWith('_'));
+
+                  if (filteredEntries.length === 0) {
+                    return <p className="text-slate-400 italic text-xs">Sin especificaciones registradas.</p>;
+                  }
+
+                  return (
+                    <div className="grid grid-cols-2 gap-2 border border-slate-200 p-3 rounded-xl bg-white">
+                      {filteredEntries.map(([k, v]) => {
+                        const displayLabel = labelMap[k] || k.replace(/_/g, ' ').toUpperCase();
+                        const displayVal = typeof v === 'boolean' ? (v ? 'Sí' : 'No') : String(v);
+                        return (
+                          <div key={k}>
+                            <span className="text-slate-400 text-[10px] block font-bold uppercase">{displayLabel}</span>
+                            <span className="font-bold text-slate-800 text-xs">{displayVal}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })() : (
+                  <p className="text-slate-400 italic text-xs">Sin especificaciones registradas.</p>
                 )}
               </div>
 
