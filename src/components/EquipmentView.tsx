@@ -497,14 +497,29 @@ export default function EquipmentView({
     }
   }, [selectedBranchId, selectedSectorId, departments]);
 
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+
+  // Debounce search input by 250ms to prevent flooding API on every keystroke
   useEffect(() => {
-    loadEquipment();
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  // Load static catalogs ONCE on mount
+  useEffect(() => {
     loadTypes();
     loadBrands();
     loadModels();
     loadDepartments();
     loadEmployees();
-  }, [selectedSectorId, selectedBranchId, searchQuery, filterTypeId, filterBrandId, filterStatus, filterDepartmentId]);
+  }, []);
+
+  // Re-fetch equipment ONLY when filters or debounced search query changes
+  useEffect(() => {
+    loadEquipment();
+  }, [selectedSectorId, selectedBranchId, debouncedSearchQuery, filterTypeId, filterBrandId, filterStatus, filterDepartmentId]);
 
   const loadEquipment = async () => {
     setLoading(true);
@@ -530,7 +545,7 @@ export default function EquipmentView({
       if (filterTypeId) params.append('typeId', filterTypeId);
       if (filterBrandId) params.append('brandId', filterBrandId);
       if (filterStatus) params.append('status', filterStatus);
-      if (searchQuery) params.append('query', searchQuery);
+      if (debouncedSearchQuery) params.append('query', debouncedSearchQuery);
 
       const res = await fetch(`/api/equipment?${params.toString()}`);
       const data = await res.json();

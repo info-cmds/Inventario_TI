@@ -253,12 +253,27 @@ export default function EmployeesView({
 
   const [allBranches, setAllBranches] = useState<any[]>([]);
 
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+
+  // Debounce search query input by 250ms to prevent flooding API on every keystroke
   useEffect(() => {
-    loadEmployees();
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  // Load static catalogs ONCE on mount
+  useEffect(() => {
     loadDepartments();
     loadSectors();
     loadAllBranches();
-  }, [selectedSectorId, selectedBranchId, searchQuery, filterDepartmentId]);
+  }, []);
+
+  // Re-fetch employees ONLY when sector, branch, department or debounced search query changes
+  useEffect(() => {
+    loadEmployees();
+  }, [selectedSectorId, selectedBranchId, filterDepartmentId, debouncedSearchQuery]);
 
   const loadAllBranches = async () => {
     try {
@@ -282,7 +297,7 @@ export default function EmployeesView({
         params.append('sectorId', selectedSectorId);
       }
       if (filterDepartmentId) params.append('departmentId', filterDepartmentId);
-      if (searchQuery) params.append('query', searchQuery);
+      if (debouncedSearchQuery) params.append('query', debouncedSearchQuery);
 
       const res = await fetch(`/api/employees?${params.toString()}`);
       const data = await res.json();

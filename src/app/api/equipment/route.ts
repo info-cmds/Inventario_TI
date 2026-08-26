@@ -40,17 +40,17 @@ export async function GET(req: NextRequest) {
         ...(status ? { status } : {}),
         OR: query
           ? [
-              { asset_tag: { contains: query } },
-              { serial_number: { contains: query } },
-              { dynamic_values: { contains: query } },
-              { brand: { name: { contains: query } } },
-              { model: { name: { contains: query } } },
+              { asset_tag: { contains: query, mode: 'insensitive' } },
+              { serial_number: { contains: query, mode: 'insensitive' } },
+              { dynamic_values: { contains: query, mode: 'insensitive' } },
+              { brand: { name: { contains: query, mode: 'insensitive' } } },
+              { model: { name: { contains: query, mode: 'insensitive' } } },
               {
                 assignments: {
                   some: {
                     fecha_fin: null,
                     employee: {
-                      full_name: { contains: query },
+                      full_name: { contains: query, mode: 'insensitive' },
                     },
                   },
                 },
@@ -58,7 +58,23 @@ export async function GET(req: NextRequest) {
             ]
           : undefined,
       },
-      include: {
+      select: {
+        id: true,
+        asset_tag: true,
+        serial_number: true,
+        typeId: true,
+        brandId: true,
+        modelId: true,
+        branchId: true,
+        departmentId: true,
+        vlan: true,
+        ip_address: true,
+        dynamic_values: true,
+        status: true,
+        attached_documents: true,
+        history_logs: true,
+        createdAt: true,
+        updatedAt: true,
         type: true,
         brand: true,
         model: true,
@@ -66,11 +82,19 @@ export async function GET(req: NextRequest) {
         department: true,
         assignments: {
           where: { fecha_fin: null },
-          include: {
+          select: {
+            id: true,
+            fecha_inicio: true,
+            notes: true,
             employee: {
-              include: {
-                branch: { include: { sector: true } },
-                department: true,
+              select: {
+                id: true,
+                full_name: true,
+                rut_document: true,
+                position: true,
+                status: true,
+                branch: { select: { id: true, name: true, sector: true } },
+                department: { select: { id: true, name: true } },
               },
             },
             assignedByUser: {

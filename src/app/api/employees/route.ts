@@ -58,17 +58,30 @@ export async function GET(req: NextRequest) {
         ...(status ? { status } : {}),
         OR: query
           ? [
-              { full_name: { contains: query } },
-              { names: { contains: query } },
-              { paternal_surname: { contains: query } },
-              { maternal_surname: { contains: query } },
-              { rut_document: { contains: query } },
-              { email: { contains: query } },
-              { position: { contains: query } },
+              { full_name: { contains: query, mode: 'insensitive' } },
+              { names: { contains: query, mode: 'insensitive' } },
+              { paternal_surname: { contains: query, mode: 'insensitive' } },
+              { maternal_surname: { contains: query, mode: 'insensitive' } },
+              { rut_document: { contains: query, mode: 'insensitive' } },
+              { email: { contains: query, mode: 'insensitive' } },
+              { position: { contains: query, mode: 'insensitive' } },
             ]
           : undefined,
       },
-      include: {
+      select: {
+        id: true,
+        rut_document: true,
+        names: true,
+        paternal_surname: true,
+        maternal_surname: true,
+        full_name: true,
+        email: true,
+        position: true,
+        branchId: true,
+        departmentId: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
         branch: { include: { sector: true } },
         department: true,
         assignments: {

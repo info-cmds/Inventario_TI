@@ -2,6 +2,52 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
 
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const sessionUser = await getSessionUser(req);
+    if (!sessionUser) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const equipment = await prisma.equipment.findUnique({
+      where: { id },
+      include: {
+        type: true,
+        brand: true,
+        model: true,
+        branch: { include: { sector: true } },
+        department: true,
+        assignments: {
+          where: { fecha_fin: null },
+          include: {
+            employee: {
+              include: {
+                branch: { include: { sector: true } },
+                department: true,
+              },
+            },
+            assignedByUser: {
+              select: { id: true, name: true, email: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!equipment) {
+      return NextResponse.json({ error: 'Equipo no encontrado' }, { status: 404 });
+    }
+
+    return NextResponse.json(equipment);
+  } catch (error: any) {
+    return NextResponse.json({ error: 'Error al obtener equipo' }, { status: 500 });
+  }
+}
+
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
