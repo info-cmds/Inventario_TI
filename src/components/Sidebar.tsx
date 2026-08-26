@@ -28,6 +28,8 @@ import {
   HardDrive,
 } from 'lucide-react';
 
+import { LOGO_CMDS_BASE64 } from '@/lib/logoDataUrl';
+
 interface SidebarProps {
   currentTab: string;
   onTabChange: (
@@ -295,7 +297,7 @@ export default function Sidebar({
     <aside className="w-full lg:w-64 bg-white border border-slate-200/80 rounded-2xl shadow-xs flex flex-col shrink-0 h-full lg:min-h-[calc(100vh-6rem)] overflow-hidden">
       {/* Sidebar Header */}
       <div className="p-4 border-b border-slate-100 flex flex-col items-center justify-center space-y-2 bg-gradient-to-b from-slate-50 to-white">
-        <img src="/logo-cmds.png" alt="CMDS Antofagasta" className="h-10 w-auto object-contain" />
+        <img src={LOGO_CMDS_BASE64} alt="CMDS Antofagasta" className="h-10 w-auto object-contain" />
         <div className="flex items-center justify-between w-full pt-1 px-1">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center space-x-1">
             <ListTree className="w-3.5 h-3.5 text-[#016098]" />

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { MonitorCheck, Lock, Mail, ArrowRight, ShieldCheck, Key } from 'lucide-react';
+import { LOGO_CMDS_BASE64 } from '@/lib/logoDataUrl';
 
 interface LoginViewProps {
   onLoginSuccess: (user: any, mustChangePassword: boolean) => void;
@@ -51,7 +52,7 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
           <div className="text-center space-y-3">
             <div className="bg-white p-3 rounded-2xl shadow-lg border border-slate-100 inline-block mx-auto">
               <img
-                src="/logo-cmds-login.png"
+                src={LOGO_CMDS_BASE64}
                 alt="CMDS Logo"
                 className="h-24 w-auto object-contain mx-auto"
               />
