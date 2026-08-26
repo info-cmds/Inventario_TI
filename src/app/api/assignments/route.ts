@@ -132,6 +132,19 @@ export async function POST(req: NextRequest) {
       ],
     });
 
+    // Resolve target location: sync employee branch & department to match assigned equipment
+    let targetBranchId = equipment.branchId;
+    let targetDeptId = equipment.departmentId !== null ? equipment.departmentId : (employee.departmentId || null);
+
+    // Update employee branch & department so it immediately reflects on the employee record
+    await prisma.employee.update({
+      where: { id: employeeId },
+      data: {
+        branchId: targetBranchId,
+        departmentId: targetDeptId,
+      },
+    });
+
     // Atomically close any orphan open assignments, create new assignment record, and update equipment location & history
     const [_, assignment, updatedEquipment] = await prisma.$transaction([
       prisma.equipmentAssignment.updateMany({
@@ -147,8 +160,8 @@ export async function POST(req: NextRequest) {
           notes: notes ? notes.trim() : null,
         },
         include: {
-          equipment: { include: { type: true } },
-          employee: true,
+          equipment: { include: { type: true, brand: true, model: true } },
+          employee: { include: { branch: true, department: true } },
           assignedByUser: { select: { name: true, email: true } },
         },
       }),
@@ -156,8 +169,8 @@ export async function POST(req: NextRequest) {
         where: { id: equipmentId },
         data: {
           status: 'asignado',
-          branchId: employee.branchId,
-          departmentId: employee.departmentId || null,
+          branchId: targetBranchId,
+          departmentId: targetDeptId,
           history_logs: JSON.stringify(existingLogs),
         },
       }),

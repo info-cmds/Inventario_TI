@@ -79,20 +79,14 @@ export async function PUT(
         });
 
         if (assignedEmp) {
-          // If departmentId was not explicitly changed in request, sync from employee
-          if (departmentId === undefined) {
-            targetBranchId = assignedEmp.branchId;
-            targetDepartmentId = assignedEmp.departmentId || null;
-          } else {
-            // If departmentId WAS explicitly updated on equipment, sync employee to match equipment
-            await prisma.employee.update({
-              where: { id: empIdToUse },
-              data: {
-                branchId: targetBranchId,
-                departmentId: targetDepartmentId,
-              },
-            });
-          }
+          // Always sync assigned employee's branch and department to match the equipment's target location
+          await prisma.employee.update({
+            where: { id: empIdToUse },
+            data: {
+              branchId: targetBranchId,
+              departmentId: targetDepartmentId,
+            },
+          });
         }
 
         // If employee changed or no active assignment, close existing and create new

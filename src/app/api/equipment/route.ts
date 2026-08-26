@@ -144,13 +144,13 @@ export async function POST(req: NextRequest) {
     let finalDeptId = departmentId ? departmentId : null;
 
     if (status === 'asignado' && assignedEmployeeId) {
-      const assignedEmp = await prisma.employee.findUnique({
+      await prisma.employee.update({
         where: { id: assignedEmployeeId },
+        data: {
+          branchId: finalBranchId,
+          departmentId: finalDeptId,
+        },
       });
-      if (assignedEmp) {
-        finalBranchId = assignedEmp.branchId;
-        finalDeptId = assignedEmp.departmentId || null;
-      }
     }
 
     const nowFormatted = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
