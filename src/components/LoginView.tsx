@@ -60,7 +60,7 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
               CMDS <span className="text-[#39BABD] font-normal">Inventario</span>
             </h1>
             <p className="text-xs text-slate-500 font-medium">
-              Control de Inventario Tecnológico Multi-Sucursal • CMDS
+              Control de Inventario Tecnológico • CMDS
             </p>
           </div>
 
