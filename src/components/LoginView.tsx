@@ -38,11 +38,6 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
     }
   };
 
-  const handleQuickLogin = (emailVal: string, passwordVal: string) => {
-    setEmail(emailVal);
-    setPassword(passwordVal);
-  };
-
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background Decorative Gradients */}
@@ -115,42 +110,6 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
               <ArrowRight className="w-4 h-4 text-[#39BABD]" />
             </button>
           </form>
-
-          {/* Quick Credential Test Buttons */}
-          <div className="pt-4 border-t border-slate-100 space-y-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block text-center">
-              Acceso Rápido de Prueba (Demo)
-            </span>
-
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('admin@empresa.com', 'admin123')}
-                className="p-2 bg-slate-100 hover:bg-[#EB567F]/10 hover:border-[#EB567F]/30 border border-slate-200 rounded-xl text-center transition-all group"
-              >
-                <span className="block text-[11px] font-bold text-slate-800 group-hover:text-[#EB567F]">SuperAdmin</span>
-                <span className="text-[9px] text-slate-400 block font-mono">Primer Login</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('admin.educacion@empresa.com', 'admin123')}
-                className="p-2 bg-slate-100 hover:bg-[#016098]/10 hover:border-[#016098]/30 border border-slate-200 rounded-xl text-center transition-all group"
-              >
-                <span className="block text-[11px] font-bold text-slate-800 group-hover:text-[#016098]">Admin Edu</span>
-                <span className="text-[9px] text-slate-400 block font-mono">Educación</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('lector.valparaiso@empresa.com', 'admin123')}
-                className="p-2 bg-slate-100 hover:bg-[#39BABD]/10 hover:border-[#39BABD]/30 border border-slate-200 rounded-xl text-center transition-all group"
-              >
-                <span className="block text-[11px] font-bold text-slate-800 group-hover:text-[#39BABD]">Lector Val</span>
-                <span className="text-[9px] text-slate-400 block font-mono">Valparaíso</span>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Footer info */}
