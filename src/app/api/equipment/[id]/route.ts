@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
+import { sanitizeDynamicValues } from '@/lib/sanitizeDynamicValues';
 
 export async function GET(
   req: NextRequest,
@@ -312,19 +313,29 @@ export async function PUT(
       });
     }
 
+    const targetTypeId = typeId || equipment.typeId;
+    const targetTypeObj = targetTypeId
+      ? await prisma.equipmentType.findUnique({ where: { id: targetTypeId } })
+      : null;
+
+    const sanitizedDynValues = sanitizeDynamicValues(
+      targetTypeObj?.dynamic_attributes,
+      dynObj
+    );
+
     const updated = await prisma.equipment.update({
       where: { id },
       data: {
         asset_tag: newAssetTag,
         serial_number: newSerial,
-        typeId: typeId || equipment.typeId,
+        typeId: targetTypeId,
         brandId: brandId !== undefined ? (brandId || null) : equipment.brandId,
         modelId: modelId !== undefined ? (modelId || null) : equipment.modelId,
         branchId: targetBranchId,
         departmentId: targetDepartmentId,
         vlan: newVlan,
         ip_address: newIp,
-        dynamic_values: JSON.stringify(dynObj),
+        dynamic_values: sanitizedDynValues,
         status: newStatus,
         history_logs: JSON.stringify(existingLogs),
       },

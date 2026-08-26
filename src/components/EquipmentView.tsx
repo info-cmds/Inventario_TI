@@ -636,23 +636,24 @@ export default function EquipmentView({
     const targetBrandId = newBrandId !== undefined ? newBrandId : brandId;
 
     const tObj = equipmentTypes.find((t) => t.id === targetTypeId);
-    if (!tObj) return initialValues;
+    if (!tObj) {
+      setDynamicValues({});
+      return {};
+    }
 
     let attrDefs: DynamicAttributeDef[] = [];
     try {
       attrDefs = JSON.parse(tObj.dynamic_attributes || '[]');
     } catch (e) {
-      return initialValues;
+      setDynamicValues({});
+      return {};
     }
-
-    if (attrDefs.length === 0) return initialValues;
 
     const mObj = models.find((m) => m.id === targetModelId);
     const bObj = brands.find((b) => b.id === targetBrandId);
-    const modelName = mObj?.name || '';
-    const brandName = bObj?.name || '';
 
-    const newValues = { ...dynamicValues, ...initialValues };
+    // Build fresh values scoped strictly to defined attrDefs for this EquipmentType!
+    const freshValues: Record<string, any> = {};
 
     let parsedSpecs: any = {};
     if (mObj?.specs) {
@@ -662,21 +663,24 @@ export default function EquipmentView({
     }
 
     attrDefs.forEach((attr) => {
+      // Preserve explicit initial user value if present
+      if (initialValues[attr.key] !== undefined && initialValues[attr.key] !== null) {
+        freshValues[attr.key] = initialValues[attr.key];
+        return;
+      }
+
       const keyLower = attr.key.toLowerCase();
       const labelLower = attr.label.toLowerCase();
 
-      // RAM Autofill
+      // RAM Autofill ONLY if model explicitly defines RAM
       const isRamKey = keyLower.includes('ram') || labelLower.includes('ram') || keyLower.includes('memoria');
       if (isRamKey) {
         const val = mObj?.ram || parsedSpecs.ram;
-        if (val) {
-          newValues[attr.key] = val;
-        } else if (!newValues[attr.key]) {
-          newValues[attr.key] = '16 GB';
-        }
+        if (val) freshValues[attr.key] = val;
+        return;
       }
 
-      // Procesador Autofill
+      // Procesador Autofill ONLY if model explicitly defines processor
       const isCpuKey =
         keyLower.includes('procesador') ||
         labelLower.includes('procesador') ||
@@ -684,24 +688,11 @@ export default function EquipmentView({
         keyLower.includes('cpu');
       if (isCpuKey) {
         const val = mObj?.processor || parsedSpecs.processor;
-        if (val) {
-          newValues[attr.key] = val;
-        } else if (!newValues[attr.key]) {
-          if (modelName.toLowerCase().includes('i7')) {
-            newValues[attr.key] = 'Intel Core i7';
-          } else if (modelName.toLowerCase().includes('i3')) {
-            newValues[attr.key] = 'Intel Core i3';
-          } else if (modelName.toLowerCase().includes('ryzen')) {
-            newValues[attr.key] = 'AMD Ryzen 5';
-          } else if (modelName.toLowerCase().includes('macbook') || brandName.toLowerCase().includes('apple')) {
-            newValues[attr.key] = 'Apple M2';
-          } else {
-            newValues[attr.key] = 'Intel Core i5';
-          }
-        }
+        if (val) freshValues[attr.key] = val;
+        return;
       }
 
-      // Almacenamiento / Disco Autofill
+      // Almacenamiento / Disco Autofill ONLY if model explicitly defines storage
       const isStorageKey =
         keyLower.includes('almacenamiento') ||
         labelLower.includes('almacenamiento') ||
@@ -710,49 +701,57 @@ export default function EquipmentView({
         keyLower.includes('storage') ||
         keyLower.includes('ssd') ||
         keyLower.includes('hdd');
-
       if (isStorageKey) {
         const val = mObj?.storage || parsedSpecs.storage;
-        if (val) {
-          newValues[attr.key] = val;
-        } else if (!newValues[attr.key]) {
-          newValues[attr.key] = '512 GB SSD';
-        }
+        if (val) freshValues[attr.key] = val;
+        return;
       }
 
       // Tipo de Tinta / Tóner
       const isInkKey = keyLower.includes('tinta') || labelLower.includes('tinta') || keyLower.includes('toner') || keyLower.includes('ink');
       if (isInkKey && parsedSpecs.ink_type) {
-        newValues[attr.key] = parsedSpecs.ink_type;
+        freshValues[attr.key] = parsedSpecs.ink_type;
+        return;
       }
 
       // Puerto de Red
       const isNetKey = keyLower.includes('red') || labelLower.includes('red') || keyLower.includes('network') || keyLower.includes('puerto_red');
       if (isNetKey && parsedSpecs.network_port) {
-        newValues[attr.key] = parsedSpecs.network_port;
+        freshValues[attr.key] = parsedSpecs.network_port;
+        return;
       }
 
       // Tamaño de Pantalla
       const isScreenKey = keyLower.includes('pantalla') || labelLower.includes('pantalla') || keyLower.includes('screen') || keyLower.includes('inches');
       if (isScreenKey && parsedSpecs.screen_size) {
-        newValues[attr.key] = parsedSpecs.screen_size;
+        freshValues[attr.key] = parsedSpecs.screen_size;
+        return;
       }
 
       // Lúmenes
       const isLumensKey = keyLower.includes('lumen') || labelLower.includes('lúmen') || labelLower.includes('lumen') || keyLower.includes('brillo');
       if (isLumensKey && parsedSpecs.lumens) {
-        newValues[attr.key] = parsedSpecs.lumens;
+        freshValues[attr.key] = parsedSpecs.lumens;
+        return;
       }
 
       // Resolución
       const isResKey = keyLower.includes('resolucion') || labelLower.includes('resolución') || labelLower.includes('resolucion') || keyLower.includes('resolution');
       if (isResKey && parsedSpecs.resolution) {
-        newValues[attr.key] = parsedSpecs.resolution;
+        freshValues[attr.key] = parsedSpecs.resolution;
+        return;
       }
     });
 
-    setDynamicValues(newValues);
-    return newValues;
+    // Preserve internal system metadata keys starting with '_' (e.g. _decommission_reason, _upgrades, _maintenances)
+    Object.keys(initialValues).forEach((k) => {
+      if (k.startsWith('_')) {
+        freshValues[k] = initialValues[k];
+      }
+    });
+
+    setDynamicValues(freshValues);
+    return freshValues;
   };
 
   const handleOpenEqModal = (eq?: any) => {

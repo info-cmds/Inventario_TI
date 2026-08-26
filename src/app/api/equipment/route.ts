@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUser, filterByBranchPermissions } from '@/lib/auth';
+import { sanitizeDynamicValues } from '@/lib/sanitizeDynamicValues';
 
 export async function GET(req: NextRequest) {
   try {
@@ -199,6 +200,15 @@ export async function POST(req: NextRequest) {
       ],
     }];
 
+    const equipmentTypeObj = typeId
+      ? await prisma.equipmentType.findUnique({ where: { id: typeId } })
+      : null;
+
+    const sanitizedDynValues = sanitizeDynamicValues(
+      equipmentTypeObj?.dynamic_attributes,
+      dynamic_values || {}
+    );
+
     const equipment = await prisma.equipment.create({
       data: {
         asset_tag: asset_tag.trim().toUpperCase(),
@@ -210,7 +220,7 @@ export async function POST(req: NextRequest) {
         departmentId: finalDeptId,
         vlan: vlan ? vlan.trim() : null,
         ip_address: ip_address ? ip_address.trim() : null,
-        dynamic_values: typeof dynamic_values === 'string' ? dynamic_values : JSON.stringify(dynamic_values || {}),
+        dynamic_values: sanitizedDynValues,
         status: status || 'disponible',
         history_logs: JSON.stringify(initialLogs),
       },
