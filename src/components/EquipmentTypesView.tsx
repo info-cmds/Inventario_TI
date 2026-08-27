@@ -93,6 +93,10 @@ export default function EquipmentTypesView({
   const [selectedBrandModal, setSelectedBrandModal] = useState<any>(null);
   const [brandModelsSearchQuery, setBrandModelsSearchQuery] = useState('');
 
+  // Type Models Modal State (Clic en Modelos dentro de Tipos)
+  const [isTypeModelsModalOpen, setIsTypeModelsModalOpen] = useState(false);
+  const [selectedTypeModal, setSelectedTypeModal] = useState<any>(null);
+
   // Pagination states
   const [typesPage, setTypesPage] = useState(1);
   const [typesPageSize, setTypesPageSize] = useState(12);
@@ -109,6 +113,17 @@ export default function EquipmentTypesView({
     setBrandModelsSearchQuery('');
     setIsBrandModelsModalOpen(true);
   };
+
+  const handleOpenTypeModelsModal = (type: any) => {
+    setSelectedTypeModal(type);
+    setIsTypeModelsModalOpen(true);
+  };
+
+  useEffect(() => {
+    setTypesPage(1);
+    setBrandsPage(1);
+    setModelsPage(1);
+  }, [searchQuery, selectedBrandFilter, selectedTypeFilter]);
 
   useEffect(() => {
     loadAllData();
@@ -425,8 +440,16 @@ export default function EquipmentTypesView({
   const handleSaveModelSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!modelName.trim()) {
+      setError('El nombre del modelo es obligatorio.');
+      return;
+    }
+    if (!modelBrandId) {
+      setError('Debe seleccionar una marca perteneciente para el modelo.');
+      return;
+    }
     triggerSuperAdminConfirm(
-      `${editingModel ? 'Actualizar' : 'Crear'} Modelo "${modelName}"`,
+      `${editingModel ? 'Actualizar' : 'Crear'} Modelo "${modelName.trim().toUpperCase()}"`,
       performSaveModel
     );
   };
@@ -519,6 +542,67 @@ export default function EquipmentTypesView({
               </button>
             );
           })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderPagination = (
+    currentPage: number,
+    pageSize: number,
+    totalItems: number,
+    onPageChange: (page: number) => void,
+    onPageSizeChange: (size: number) => void
+  ) => {
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+    const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    const endItem = Math.min(currentPage * pageSize, totalItems);
+
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-white border border-slate-200/80 rounded-2xl text-xs text-slate-600 font-semibold shadow-xs">
+        <div className="flex items-center space-x-2">
+          <span>Mostrando <span className="font-bold text-slate-900">{startItem} - {endItem}</span> de <span className="font-bold text-slate-900">{totalItems}</span> registros</span>
+          <span className="text-slate-300">|</span>
+          <label className="flex items-center space-x-1">
+            <span>Mostrar:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                onPageSizeChange(Number(e.target.value));
+                onPageChange(1);
+              }}
+              className="px-2 py-1 border border-slate-300 rounded-lg outline-none font-bold text-slate-800 focus:ring-1 focus:ring-[#016098]"
+            >
+              <option value={15}>15 por pág.</option>
+              <option value={30}>30 por pág.</option>
+              <option value={50}>50 por pág.</option>
+              <option value={1000}>Mostrar Todos</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="flex items-center space-x-1.5">
+          <button
+            type="button"
+            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+            disabled={currentPage <= 1}
+            className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent font-bold cursor-pointer transition-colors"
+          >
+            ← Anterior
+          </button>
+          
+          <span className="px-3 py-1.5 font-bold text-[#016098] bg-[#016098]/10 rounded-lg">
+            Pág. {currentPage} de {totalPages}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage >= totalPages}
+            className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent font-bold cursor-pointer transition-colors"
+          >
+            Siguiente →
+          </button>
         </div>
       </div>
     );
@@ -740,14 +824,27 @@ export default function EquipmentTypesView({
                     </div>
                   </div>
 
-                  <div className="text-[11px] text-slate-500 pt-2 border-t border-slate-100 flex justify-between">
-                    <span>Equipos: {type._count?.equipment || 0}</span>
-                    <span>Modelos: {type._count?.models || 0}</span>
+                  <div className="text-[11px] text-slate-500 pt-2 border-t border-slate-100 flex justify-between items-center">
+                    <span>Equipos: <strong className="text-slate-800">{type._count?.equipment || 0}</strong></span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenTypeModelsModal(type)}
+                      className="px-2.5 py-1 bg-[#016098]/10 hover:bg-[#016098]/20 text-[#016098] font-bold rounded-lg transition-colors cursor-pointer flex items-center space-x-1"
+                      title="Ver todos los modelos de este tipo de equipo"
+                    >
+                      <Cpu className="w-3.5 h-3.5 text-[#016098]" />
+                      <span>Modelos ({models.filter((m) => m.typeId === type.id).length})</span>
+                    </button>
                   </div>
                 </div>
               );
             })}
         </div>
+      )}
+
+      {/* Pagination for Types */}
+      {activeTab === 'types' && filteredTypes.length > 0 && (
+        renderPagination(typesPage, typesPageSize, filteredTypes.length, setTypesPage, setTypesPageSize)
       )}
 
       {/* TAB 2: BRANDS LIST */}
@@ -809,64 +906,76 @@ export default function EquipmentTypesView({
         </div>
       )}
 
+      {/* Pagination for Brands */}
+      {activeTab === 'brands' && filteredBrands.length > 0 && (
+        renderPagination(brandsPage, brandsPageSize, filteredBrands.length, setBrandsPage, setBrandsPageSize)
+      )}
+
       {/* TAB 3: MODELS LIST TABLE */}
       {activeTab === 'models' && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold">
-              <tr>
-                <th className="py-3 px-4">Modelo</th>
-                <th className="py-3 px-4">Marca</th>
-                <th className="py-3 px-4">Tipo de Equipo</th>
-                <th className="py-3 px-4">Alcance Sector</th>
-                <th className="py-3 px-4">Especificaciones Hardware</th>
-                <th className="py-3 px-4 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {filteredModels
-                .slice((modelsPage - 1) * modelsPageSize, modelsPage * modelsPageSize)
-                .map((model) => (
-                  <tr key={model.id} className="hover:bg-slate-50">
-                    <td className="py-3 px-4 font-bold text-slate-900">{model.name}</td>
-                    <td className="py-3 px-4 font-bold text-[#F7A517]">{model.brand?.name || '-'}</td>
-                    <td className="py-3 px-4 font-semibold text-[#016098]">{model.type?.name || 'General'}</td>
-                    <td className="py-3 px-4">
-                      {model.sector ? (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold bg-[#016098]/10 text-[#016098] border border-[#016098]/20">
-                          🏢 {model.sector.name}
-                        </span>
-                      ) : (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600">
-                          🌐 Global
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-[11px] text-slate-500">
-                      {[model.processor, model.ram, model.storage].filter(Boolean).join(' | ') || 'Sin especificaciones'}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      {userRole !== 'LECTOR' && (
-                        <div className="flex justify-end space-x-1">
-                          <button
-                            onClick={() => handleOpenModelModal(model)}
-                            className="p-1 hover:bg-slate-100 text-slate-500 hover:text-[#39BABD] rounded-lg transition-colors cursor-pointer"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteModel(model.id, model.name)}
-                            className="p-1 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
+        <div className="space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold">
+                <tr>
+                  <th className="py-3 px-4">Modelo</th>
+                  <th className="py-3 px-4">Marca</th>
+                  <th className="py-3 px-4">Tipo de Equipo</th>
+                  <th className="py-3 px-4">Alcance Sector</th>
+                  <th className="py-3 px-4">Especificaciones Hardware</th>
+                  <th className="py-3 px-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {filteredModels
+                  .slice((modelsPage - 1) * modelsPageSize, modelsPage * modelsPageSize)
+                  .map((model) => (
+                    <tr key={model.id} className="hover:bg-slate-50">
+                      <td className="py-3 px-4 font-bold text-slate-900">{model.name}</td>
+                      <td className="py-3 px-4 font-bold text-[#F7A517]">{model.brand?.name || '-'}</td>
+                      <td className="py-3 px-4 font-semibold text-[#016098]">{model.type?.name || 'General'}</td>
+                      <td className="py-3 px-4">
+                        {model.sector ? (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold bg-[#016098]/10 text-[#016098] border border-[#016098]/20">
+                            🏢 {model.sector.name}
+                          </span>
+                        ) : (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600">
+                            🌐 Global
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-[11px] text-slate-500">
+                        {[model.processor, model.ram, model.storage].filter(Boolean).join(' | ') || 'Sin especificaciones'}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        {userRole !== 'LECTOR' && (
+                          <div className="flex justify-end space-x-1">
+                            <button
+                              onClick={() => handleOpenModelModal(model)}
+                              className="p-1 hover:bg-slate-100 text-slate-500 hover:text-[#39BABD] rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteModel(model.id, model.name)}
+                              className="p-1 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination for Models */}
+          {filteredModels.length > 0 && (
+            renderPagination(modelsPage, modelsPageSize, filteredModels.length, setModelsPage, setModelsPageSize)
+          )}
         </div>
       )}
 
@@ -908,6 +1017,58 @@ export default function EquipmentTypesView({
             <div className="flex justify-end pt-2 border-t border-slate-100">
               <button
                 onClick={() => setIsBrandModelsModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Type Models Click Modal */}
+      {isTypeModelsModalOpen && selectedTypeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <Layers className="w-5 h-5 text-[#016098]" />
+                <h3 className="font-bold text-slate-900 text-base">
+                  Modelos de Tipo: <span className="text-[#016098]">{selectedTypeModal.name}</span>
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsTypeModelsModalOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2">
+              {models
+                .filter((m) => m.typeId === selectedTypeModal.id)
+                .map((m) => (
+                  <div key={m.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center">
+                    <div>
+                      <div className="font-bold text-xs text-slate-900">{m.name}</div>
+                      <div className="text-[10px] text-[#F7A517] font-semibold">Marca: {m.brand?.name || 'General'}</div>
+                    </div>
+                    <span className="text-[10px] font-mono bg-[#016098]/10 text-[#016098] px-2 py-0.5 rounded font-bold">
+                      {m._count?.equipment || 0} equipos
+                    </span>
+                  </div>
+                ))}
+              {models.filter((m) => m.typeId === selectedTypeModal.id).length === 0 && (
+                <p className="text-center text-xs text-slate-400 italic py-6">
+                  No hay modelos asociados a este tipo de equipo aún.
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setIsTypeModelsModalOpen(false)}
                 className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
               >
                 Cerrar
