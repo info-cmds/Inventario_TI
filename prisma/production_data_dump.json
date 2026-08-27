@@ -13,8 +13,8 @@
     "equipmentTypes": 9,
     "brands": 12,
     "equipmentModels": 46,
-    "equipment": 164,
-    "equipmentAssignments": 152
+    "equipment": 163,
+    "equipmentAssignments": 151
   },
   "data": {
     "users": [
@@ -37465,23 +37465,6 @@
         "updatedAt": "2026-08-25T18:12:12.798Z"
       },
       {
-        "id": "cb754033-3195-4daf-bc3e-8c1913ec3045",
-        "asset_tag": "CMDS393",
-        "serial_number": "5CD34780BW",
-        "typeId": "41c37983-22e0-48e3-9fd1-f3ffc1d79541",
-        "brandId": "078db09d-3359-4e7c-b22f-9ded9d714166",
-        "modelId": "52d36836-3fd6-459c-9923-9a6cd0520830",
-        "branchId": "33a95b1f-e62a-4781-8a93-e6f2ed0f9af8",
-        "departmentId": "a12e5217-2100-41c4-9bef-f4d2f324024b",
-        "vlan": "60",
-        "ip_address": null,
-        "dynamic_values": "{\"ram\":\"16 GB\",\"processor\":\"RYZEN 5 7530U\",\"storage\":\"500 SSD\"}",
-        "status": "asignado",
-        "history_logs": "[{\"id\":\"evt-1787323026184-nlou\",\"timestamp\":\"21-08-2026 10:37 hrs\",\"userId\":\"292fa04c-e88c-4ba6-8559-570ca43b0de6\",\"userName\":\"Admin CMDS\",\"userEmail\":\"ppizarro@cmds.cl\",\"type\":\"MODIFICACION\",\"details\":\"Equipo modificado por Admin CMDS\",\"changes\":[\"Departamento: Sin Depto ➔ ABASTECIMIENTO\",\"VLAN: Sin VLAN ➔ 60\",\"Estado Operativo: disponible ➔ asignado\"]}]",
-        "createdAt": "2026-08-04T20:28:44.371Z",
-        "updatedAt": "2026-08-25T18:12:12.802Z"
-      },
-      {
         "id": "bf11631d-228e-485e-8ff5-1f0df249b7c0",
         "asset_tag": "CMDS434",
         "serial_number": "5CD347807X",
@@ -40229,17 +40212,6 @@
         "notes": "Asignación al actualizar equipo",
         "createdAt": "2026-08-21T14:35:08.556Z",
         "updatedAt": "2026-08-25T18:12:13.674Z"
-      },
-      {
-        "id": "0f3fde31-0cba-4429-a649-7009e465e7b7",
-        "equipmentId": "cb754033-3195-4daf-bc3e-8c1913ec3045",
-        "employeeId": "fc927fe1-51c0-425a-9edd-a31baee2161f",
-        "fecha_inicio": "2026-08-21T14:37:06.165Z",
-        "fecha_fin": null,
-        "assignedByUserId": "292fa04c-e88c-4ba6-8559-570ca43b0de6",
-        "notes": "Asignación al actualizar equipo",
-        "createdAt": "2026-08-21T14:37:06.165Z",
-        "updatedAt": "2026-08-25T18:12:13.677Z"
       },
       {
         "id": "3281f7c6-526d-4b39-b35d-801448006a2b",

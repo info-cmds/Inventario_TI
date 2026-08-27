@@ -272,6 +272,7 @@ export default function EmployeesView({
 
   // Re-fetch employees ONLY when sector, branch, department or debounced search query changes
   useEffect(() => {
+    setCurrentPage(1);
     loadEmployees();
   }, [selectedSectorId, selectedBranchId, filterDepartmentId, debouncedSearchQuery]);
 

@@ -526,81 +526,6 @@ export default function EquipmentTypesView({
 
   return (
     <div className="space-y-6">
-      {/* SuperAdmin Multi-Sector Warning Confirmation Alert Modal */}
-      {isConfirmAlertOpen && pendingAction && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-amber-200 space-y-4">
-            <div className="flex items-center space-x-3 text-amber-600">
-              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-6 h-6 text-amber-600" />
-              </div>
-              <div>
-                <h3 className="font-bold text-base text-slate-900">
-                  Confirmación de Alcance Multi-Sector
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Verificación de replicación en sectores
-                </p>
-              </div>
-            </div>
-
-            <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-xs space-y-2 text-slate-800">
-              <p className="font-bold text-amber-900">
-                Está a punto de ejecutar la siguiente acción en el catálogo:
-              </p>
-              <div className="p-2.5 bg-white rounded-lg border border-amber-200 font-bold text-slate-900 text-sm">
-                {pendingAction.actionName}
-              </div>
-              <p className="font-bold text-slate-700 pt-1">
-                Los cambios se aplicarán y replicarán en los siguientes sectores señalados:
-              </p>
-              <ul className="list-disc pl-5 space-y-1 font-bold text-slate-900">
-                {targetSectorIds.includes('ALL') || targetSectorIds.length === 0 ? (
-                  <li className="text-[#016098]">🌐 TODOS LOS SECTORES (Catálogo Global)</li>
-                ) : (
-                  targetSectorIds.map((secId) => {
-                    const secObj = sectors.find((s) => s.id === secId);
-                    return (
-                      <li key={secId} className="text-[#016098]">
-                        🏢 {secObj?.name || secId}
-                      </li>
-                    );
-                  })
-                )}
-              </ul>
-              <p className="text-[11px] text-amber-800 italic pt-1">
-                ⚠️ Los cambios no afectarán a otros sectores que no hayan sido expresamente seleccionados.
-              </p>
-            </div>
-
-            <div className="flex items-center justify-end space-x-3 pt-2">
-              <button
-                onClick={() => {
-                  setIsConfirmAlertOpen(false);
-                  setPendingAction(null);
-                }}
-                className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={async () => {
-                  setIsConfirmAlertOpen(false);
-                  if (pendingAction) {
-                    await pendingAction.callback();
-                    setPendingAction(null);
-                  }
-                }}
-                className="px-5 py-2 text-xs font-bold text-white bg-[#016098] hover:bg-[#014d7a] rounded-xl shadow-xs transition-all cursor-pointer flex items-center space-x-1.5"
-              >
-                <ShieldCheck className="w-4 h-4 text-[#39BABD]" />
-                <span>Sí, Confirmar y Aplicar</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>
@@ -1292,6 +1217,83 @@ export default function EquipmentTypesView({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* SuperAdmin Multi-Sector Warning Confirmation Alert Modal */}
+      {isConfirmAlertOpen && pendingAction && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[100] animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-amber-200 space-y-4">
+            <div className="flex items-center space-x-3 text-amber-600">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-slate-900">
+                  Confirmación de Alcance Multi-Sector
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Verificación de replicación en sectores
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-xs space-y-2 text-slate-800">
+              <p className="font-bold text-amber-900">
+                Está a punto de ejecutar la siguiente acción en el catálogo:
+              </p>
+              <div className="p-2.5 bg-white rounded-lg border border-amber-200 font-bold text-slate-900 text-sm">
+                {pendingAction.actionName}
+              </div>
+              <p className="font-bold text-slate-700 pt-1">
+                Los cambios se aplicarán y replicarán en los siguientes sectores señalados:
+              </p>
+              <ul className="list-disc pl-5 space-y-1 font-bold text-slate-900">
+                {targetSectorIds.includes('ALL') || targetSectorIds.length === 0 ? (
+                  <li className="text-[#016098]">🌐 TODOS LOS SECTORES (Catálogo Global)</li>
+                ) : (
+                  targetSectorIds.map((secId) => {
+                    const secObj = sectors.find((s) => s.id === secId);
+                    return (
+                      <li key={secId} className="text-[#016098]">
+                        🏢 {secObj?.name || secId}
+                      </li>
+                    );
+                  })
+                )}
+              </ul>
+              <p className="text-[11px] text-amber-800 italic pt-1">
+                ⚠️ Los cambios no afectarán a otros sectores que no hayan sido expresamente seleccionados.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsConfirmAlertOpen(false);
+                  setPendingAction(null);
+                }}
+                className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsConfirmAlertOpen(false);
+                  if (pendingAction) {
+                    await pendingAction.callback();
+                    setPendingAction(null);
+                  }
+                }}
+                className="px-5 py-2 text-xs font-bold text-white bg-[#016098] hover:bg-[#014d7a] rounded-xl shadow-xs transition-all cursor-pointer flex items-center space-x-1.5"
+              >
+                <ShieldCheck className="w-4 h-4 text-[#39BABD]" />
+                <span>Sí, Confirmar y Aplicar</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

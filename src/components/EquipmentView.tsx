@@ -518,6 +518,7 @@ export default function EquipmentView({
 
   // Re-fetch equipment ONLY when filters or debounced search query changes
   useEffect(() => {
+    setCurrentPage(1);
     loadEquipment();
   }, [selectedSectorId, selectedBranchId, debouncedSearchQuery, filterTypeId, filterBrandId, filterStatus, filterDepartmentId]);
 
@@ -1123,11 +1124,26 @@ export default function EquipmentView({
           <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
           <input
             type="text"
-            placeholder="Buscar por Asset Tag, N° Serie, Marca, Modelo o Funcionario Asignado..."
+            placeholder="Buscar por Asset Tag, Serie, RUT, Funcionario, Marca, Modelo, Tipo..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#016098] outline-none"
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full pl-9 pr-8 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#016098] outline-none"
           />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setCurrentPage(1);
+              }}
+              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer p-0.5"
+              title="Limpiar búsqueda"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         <select

@@ -32,6 +32,45 @@ export async function GET(req: NextRequest) {
 
     const branchFilter = filterByBranchPermissions(sessionUser, branchId, sectorId);
 
+    const rawQuery = query ? query.trim() : '';
+    const queryNoSeparators = rawQuery.replace(/[-\s_.]/g, '');
+
+    const searchConditions: any[] = [];
+    if (rawQuery) {
+      searchConditions.push(
+        { asset_tag: { contains: rawQuery, mode: 'insensitive' } },
+        { serial_number: { contains: rawQuery, mode: 'insensitive' } },
+        { brand: { name: { contains: rawQuery, mode: 'insensitive' } } },
+        { model: { name: { contains: rawQuery, mode: 'insensitive' } } },
+        { type: { name: { contains: rawQuery, mode: 'insensitive' } } },
+        { branch: { name: { contains: rawQuery, mode: 'insensitive' } } },
+        { department: { name: { contains: rawQuery, mode: 'insensitive' } } },
+        { vlan: { contains: rawQuery, mode: 'insensitive' } },
+        { ip_address: { contains: rawQuery, mode: 'insensitive' } },
+        { dynamic_values: { contains: rawQuery, mode: 'insensitive' } },
+        {
+          assignments: {
+            some: {
+              fecha_fin: null,
+              employee: {
+                OR: [
+                  { full_name: { contains: rawQuery, mode: 'insensitive' } },
+                  { rut_document: { contains: rawQuery, mode: 'insensitive' } },
+                ],
+              },
+            },
+          },
+        }
+      );
+
+      if (queryNoSeparators && queryNoSeparators !== rawQuery) {
+        searchConditions.push(
+          { asset_tag: { contains: queryNoSeparators, mode: 'insensitive' } },
+          { serial_number: { contains: queryNoSeparators, mode: 'insensitive' } }
+        );
+      }
+    }
+
     const equipment = await prisma.equipment.findMany({
       where: {
         ...branchFilter,
@@ -39,25 +78,7 @@ export async function GET(req: NextRequest) {
         ...(typeId ? { typeId } : {}),
         ...(brandId ? { brandId } : {}),
         ...(status ? { status } : {}),
-        OR: query
-          ? [
-              { asset_tag: { contains: query, mode: 'insensitive' } },
-              { serial_number: { contains: query, mode: 'insensitive' } },
-              { dynamic_values: { contains: query, mode: 'insensitive' } },
-              { brand: { name: { contains: query, mode: 'insensitive' } } },
-              { model: { name: { contains: query, mode: 'insensitive' } } },
-              {
-                assignments: {
-                  some: {
-                    fecha_fin: null,
-                    employee: {
-                      full_name: { contains: query, mode: 'insensitive' },
-                    },
-                  },
-                },
-              },
-            ]
-          : undefined,
+        OR: searchConditions.length > 0 ? searchConditions : undefined,
       },
       select: {
         id: true,
