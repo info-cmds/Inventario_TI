@@ -87,6 +87,7 @@ export default function EquipmentTypesView({
   const [modelScreenSize, setModelScreenSize] = useState('');
   const [modelLumens, setModelLumens] = useState('');
   const [modelResolution, setModelResolution] = useState('');
+  const [modelDynamicValues, setModelDynamicValues] = useState<Record<string, any>>({});
 
   // Brand Models Modal State (Doble clic en Marcas)
   const [isBrandModelsModalOpen, setIsBrandModelsModalOpen] = useState(false);
@@ -360,9 +361,6 @@ export default function EquipmentTypesView({
       setModelName(model.name);
       setModelBrandId(model.brandId);
       setModelTypeId(model.typeId || '');
-      setModelRam(model.ram || '');
-      setModelProcessor(model.processor || '');
-      setModelStorage(model.storage || '');
       if (model.sectorId) setTargetSectorIds([model.sectorId]);
 
       let parsedSpecs: any = {};
@@ -370,27 +368,17 @@ export default function EquipmentTypesView({
         parsedSpecs = JSON.parse(model.specs || '{}');
       } catch (e) {}
 
-      setModelInkType(parsedSpecs.ink_type || '');
-      setModelNetworkPort(parsedSpecs.network_port || '');
-      setModelScreenSize(parsedSpecs.screen_size || '');
-      setModelLumens(parsedSpecs.lumens || '');
-      setModelResolution(parsedSpecs.resolution || '');
-      if (parsedSpecs.ram && !model.ram) setModelRam(parsedSpecs.ram);
-      if (parsedSpecs.processor && !model.processor) setModelProcessor(parsedSpecs.processor);
-      if (parsedSpecs.storage && !model.storage) setModelStorage(parsedSpecs.storage);
+      if (model.ram && !parsedSpecs.ram) parsedSpecs.ram = model.ram;
+      if (model.processor && !parsedSpecs.processor) parsedSpecs.processor = model.processor;
+      if (model.storage && !parsedSpecs.storage) parsedSpecs.storage = model.storage;
+
+      setModelDynamicValues(parsedSpecs);
     } else {
       setEditingModel(null);
       setModelName('');
       setModelBrandId(selectedBrandFilter || brands[0]?.id || '');
       setModelTypeId(selectedTypeFilter || types[0]?.id || '');
-      setModelRam('');
-      setModelProcessor('');
-      setModelStorage('');
-      setModelInkType('');
-      setModelNetworkPort('');
-      setModelScreenSize('');
-      setModelLumens('');
-      setModelResolution('');
+      setModelDynamicValues({});
     }
     setIsModelModalOpen(true);
   };
@@ -400,15 +388,19 @@ export default function EquipmentTypesView({
       const url = editingModel ? `/api/models/${editingModel.id}` : '/api/models';
       const method = editingModel ? 'PUT' : 'POST';
 
-      const specsObj: Record<string, any> = {};
-      if (modelRam) specsObj.ram = modelRam;
-      if (modelProcessor) specsObj.processor = modelProcessor;
-      if (modelStorage) specsObj.storage = modelStorage;
-      if (modelInkType) specsObj.ink_type = modelInkType;
-      if (modelNetworkPort) specsObj.network_port = modelNetworkPort;
-      if (modelScreenSize) specsObj.screen_size = modelScreenSize;
-      if (modelLumens) specsObj.lumens = modelLumens;
-      if (modelResolution) specsObj.resolution = modelResolution;
+      const specsObj: Record<string, any> = { ...modelDynamicValues };
+
+      let ramVal: string | null = null;
+      let cpuVal: string | null = null;
+      let storageVal: string | null = null;
+
+      Object.entries(modelDynamicValues).forEach(([k, v]) => {
+        if (!v) return;
+        const kLower = k.toLowerCase();
+        if (kLower.includes('ram') || kLower.includes('memoria')) ramVal = String(v);
+        if (kLower.includes('procesador') || kLower.includes('processor') || kLower.includes('cpu')) cpuVal = String(v);
+        if (kLower.includes('almacenamiento') || kLower.includes('disco') || kLower.includes('storage') || kLower.includes('ssd')) storageVal = String(v);
+      });
 
       const res = await fetch(url, {
         method,
@@ -417,9 +409,9 @@ export default function EquipmentTypesView({
           name: modelName,
           brandId: modelBrandId,
           typeId: modelTypeId || null,
-          ram: modelRam || null,
-          processor: modelProcessor || null,
-          storage: modelStorage || null,
+          ram: ramVal,
+          processor: cpuVal,
+          storage: storageVal,
           specs: JSON.stringify(specsObj),
           targetSectorIds,
         }),
@@ -1361,6 +1353,94 @@ export default function EquipmentTypesView({
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#39BABD] outline-none font-bold uppercase"
                 />
               </div>
+
+              {/* DYNAMIC ATTRIBUTES / SPECIFICATIONS FOR SELECTED EQUIPMENT TYPE */}
+              {(() => {
+                const selectedTypeObj = types.find((t) => t.id === modelTypeId);
+                let currentTypeAttrs: DynamicAttributeDef[] = [];
+                if (selectedTypeObj?.dynamic_attributes) {
+                  try {
+                    currentTypeAttrs = JSON.parse(selectedTypeObj.dynamic_attributes || '[]');
+                  } catch (e) {}
+                }
+
+                if (!modelTypeId || currentTypeAttrs.length === 0) {
+                  return (
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                      <p className="text-xs text-slate-500 italic">
+                        {!modelTypeId
+                          ? 'Seleccione un Tipo de Equipo para configurar sus atributos y especificaciones.'
+                          : 'Este Tipo de Equipo no tiene atributos personalizados definidos aún.'}
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                    <span className="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+                      <Sliders className="w-4 h-4 text-[#016098]" />
+                      <span>Especificaciones y Atributos de Fábrica ({currentTypeAttrs.length})</span>
+                    </span>
+
+                    <div className="grid grid-cols-1 gap-2.5 pt-1">
+                      {currentTypeAttrs.map((attr) => {
+                        const val = modelDynamicValues[attr.key] !== undefined ? modelDynamicValues[attr.key] : '';
+
+                        if (attr.type === 'select') {
+                          return (
+                            <div key={attr.key}>
+                              <label className="block text-[11px] font-semibold text-slate-700 mb-1">{attr.label}</label>
+                              <select
+                                value={val}
+                                onChange={(e) => setModelDynamicValues({ ...modelDynamicValues, [attr.key]: e.target.value })}
+                                className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg outline-none focus:ring-1 focus:ring-[#39BABD] font-semibold text-slate-800 bg-white"
+                              >
+                                <option value="">-- Seleccionar Opciones --</option>
+                                {(attr.options || []).map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          );
+                        }
+
+                        if (attr.type === 'boolean') {
+                          return (
+                            <div key={attr.key}>
+                              <label className="block text-[11px] font-semibold text-slate-700 mb-1">{attr.label}</label>
+                              <select
+                                value={val}
+                                onChange={(e) => setModelDynamicValues({ ...modelDynamicValues, [attr.key]: e.target.value })}
+                                className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg outline-none focus:ring-1 focus:ring-[#39BABD] font-semibold text-slate-800 bg-white"
+                              >
+                                <option value="">-- Seleccionar --</option>
+                                <option value="Sí">Sí</option>
+                                <option value="No">No</option>
+                              </select>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={attr.key}>
+                            <label className="block text-[11px] font-semibold text-slate-700 mb-1">{attr.label}</label>
+                            <input
+                              type={attr.type === 'number' ? 'number' : 'text'}
+                              value={val}
+                              onChange={(e) => setModelDynamicValues({ ...modelDynamicValues, [attr.key]: e.target.value })}
+                              placeholder={`Ej: Valor de ${attr.label}`}
+                              className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg outline-none focus:ring-1 focus:ring-[#39BABD] font-semibold text-slate-800 bg-white"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="flex justify-end space-x-3 pt-2">
                 <button
