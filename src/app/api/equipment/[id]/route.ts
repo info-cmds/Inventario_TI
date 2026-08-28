@@ -278,6 +278,84 @@ export async function PUT(
       changes.push(`Dirección IP: ${equipment.ip_address || 'Sin IP'} ➔ ${newIp || 'Sin IP'}`);
     }
 
+    let isNewAssignmentEvent = false;
+    let isUnassignmentEvent = false;
+
+    if (newStatus === 'asignado' && assignedEmployeeId && (!activeAssignment || activeAssignment.employeeId !== assignedEmployeeId)) {
+      const targetEmp = await prisma.employee.findUnique({ where: { id: assignedEmployeeId } });
+      if (targetEmp) {
+        isNewAssignmentEvent = true;
+        changes.push(`Asignado a: ${targetEmp.full_name} (RUN: ${targetEmp.rut_document})`);
+        changes.push(`Cargo: ${targetEmp.position || 'N/A'}`);
+        changes.push(`Notas: ${assignmentNotes ? assignmentNotes.trim() : 'Sin notas'}`);
+
+        let empLogs: any[] = [];
+        try { empLogs = JSON.parse(targetEmp.history_logs || '[]'); } catch (e) {}
+
+        const eqType = equipment.type || (equipment.typeId ? await prisma.equipmentType.findUnique({ where: { id: equipment.typeId } }) : null);
+        const eqBrand = equipment.brand || (equipment.brandId ? await prisma.brand.findUnique({ where: { id: equipment.brandId } }) : null);
+        const eqModel = equipment.model || (equipment.modelId ? await prisma.equipmentModel.findUnique({ where: { id: equipment.modelId } }) : null);
+
+        empLogs.unshift({
+          id: 'evt-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+          timestamp: nowFormatted,
+          userId: sessionUser.id,
+          userName: sessionUser.name,
+          userEmail: sessionUser.email,
+          type: 'ASIGNACION',
+          details: `Equipo ${eqType?.name || 'Equipo'} (Asset Tag: ${equipment.asset_tag}) asignado al funcionario`,
+          changes: [
+            `Equipo Asignado: ${eqType?.name || ''} ${eqBrand?.name || ''} ${eqModel?.name || ''}`.trim(),
+            `Asset Tag: ${equipment.asset_tag}`,
+            `Número de Serie: ${equipment.serial_number}`,
+            `Notas de Asignación: ${assignmentNotes ? assignmentNotes.trim() : 'Sin notas'}`,
+            `Asignado por: ${sessionUser.name} (${sessionUser.email || 'Sin Email'})`,
+          ],
+        });
+
+        await prisma.employee.update({
+          where: { id: targetEmp.id },
+          data: { history_logs: JSON.stringify(empLogs) },
+        });
+      }
+    }
+
+    if (activeAssignment && (newStatus !== 'asignado' || (assignedEmployeeId && activeAssignment.employeeId !== assignedEmployeeId))) {
+      const oldEmp = await prisma.employee.findUnique({ where: { id: activeAssignment.employeeId } });
+      if (oldEmp) {
+        isUnassignmentEvent = true;
+        changes.push(`Desasignado de: ${oldEmp.full_name} (RUN: ${oldEmp.rut_document})`);
+
+        let empLogs: any[] = [];
+        try { empLogs = JSON.parse(oldEmp.history_logs || '[]'); } catch (e) {}
+
+        const eqType = equipment.type || (equipment.typeId ? await prisma.equipmentType.findUnique({ where: { id: equipment.typeId } }) : null);
+        const eqBrand = equipment.brand || (equipment.brandId ? await prisma.brand.findUnique({ where: { id: equipment.brandId } }) : null);
+        const eqModel = equipment.model || (equipment.modelId ? await prisma.equipmentModel.findUnique({ where: { id: equipment.modelId } }) : null);
+
+        empLogs.unshift({
+          id: 'evt-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+          timestamp: nowFormatted,
+          userId: sessionUser.id,
+          userName: sessionUser.name,
+          userEmail: sessionUser.email,
+          type: 'DESASIGNACION',
+          details: `Equipo ${eqType?.name || 'Equipo'} (Asset Tag: ${equipment.asset_tag}) desasignado del funcionario`,
+          changes: [
+            `Equipo Desasignado: ${eqType?.name || ''} ${eqBrand?.name || ''} ${eqModel?.name || ''}`.trim(),
+            `Asset Tag: ${equipment.asset_tag}`,
+            `Número de Serie: ${equipment.serial_number}`,
+            `Desasignado por: ${sessionUser.name} (${sessionUser.email || 'Sin Email'})`,
+          ],
+        });
+
+        await prisma.employee.update({
+          where: { id: oldEmp.id },
+          data: { history_logs: JSON.stringify(empLogs) },
+        });
+      }
+    }
+
     if (newStatus !== equipment.status) {
       changes.push(`Estado Operativo: ${equipment.status} ➔ ${newStatus}`);
     }
@@ -297,9 +375,16 @@ export async function PUT(
 
     if (changes.length > 0) {
       let eventType = 'MODIFICACION';
-      if (reqBody.newMaintenance) eventType = 'MANTENIMIENTO';
+      if (isNewAssignmentEvent) eventType = 'ASIGNACION';
+      else if (isUnassignmentEvent) eventType = 'DESASIGNACION';
+      else if (newStatus === 'disponible' && equipment.status !== 'disponible') eventType = 'DESASIGNACION';
+      else if (reqBody.newMaintenance) eventType = 'MANTENIMIENTO';
       else if (reqBody.newUpgrade) eventType = 'UPGRADE';
       else if (newStatus === 'dado_de_baja') eventType = 'BAJA';
+
+      const cleanReason = isUnassignmentEvent
+        ? (assignmentNotes || reqBody.reason || 'Desasignación de equipo')
+        : (newStatus === 'dado_de_baja' ? (reqBody.decommissionReason || reqBody.reason) : undefined);
 
       existingLogs.unshift({
         id: 'evt-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
@@ -308,7 +393,12 @@ export async function PUT(
         userName: sessionUser.name,
         userEmail: sessionUser.email,
         type: eventType,
-        details: `Equipo modificado por ${sessionUser.name}`,
+        reason: cleanReason,
+        details: isNewAssignmentEvent
+          ? `Equipo asignado a funcionario por ${sessionUser.name}`
+          : isUnassignmentEvent
+          ? `Equipo desasignado por ${sessionUser.name}`
+          : `Equipo modificado por ${sessionUser.name}`,
         changes,
       });
     }

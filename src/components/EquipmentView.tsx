@@ -3093,6 +3093,7 @@ export default function EquipmentView({
                   <div className="space-y-3 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-slate-200">
                     {logs.map((log: any, idx: number) => {
                       const isBaja = log.type === 'BAJA';
+                      const isDisponible = log.type === 'DISPONIBLE';
                       const isCreacion = log.type === 'CREACION';
                       const isAsignacion = log.type === 'ASIGNACION';
                       const isDesasignacion = log.type === 'DESASIGNACION';
@@ -3105,8 +3106,12 @@ export default function EquipmentView({
                             className={`w-4 h-4 rounded-full border-2 mt-1 z-10 flex-shrink-0 ${
                               isBaja
                                 ? 'bg-rose-500 border-rose-200'
+                                : isDisponible
+                                ? 'bg-sky-500 border-sky-200'
                                 : isCreacion || isAsignacion
                                 ? 'bg-emerald-500 border-emerald-200'
+                                : isDesasignacion
+                                ? 'bg-amber-500 border-amber-200'
                                 : isMantenimiento || isUpgrade
                                 ? 'bg-amber-500 border-amber-200'
                                 : 'bg-[#016098] border-[#016098]/30'
@@ -3119,6 +3124,8 @@ export default function EquipmentView({
                                 className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
                                   isBaja
                                     ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                                    : isDisponible
+                                    ? 'bg-sky-100 text-sky-800 border border-sky-300'
                                     : isCreacion
                                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                                     : isAsignacion
@@ -3145,9 +3152,21 @@ export default function EquipmentView({
                               </div>
                             </div>
 
+                            {log.details && (
+                              <div className="text-[11px] text-slate-700 font-medium mt-0.5">
+                                {log.details}
+                              </div>
+                            )}
+
                             {log.reason && (
-                              <div className="p-2 bg-rose-100/80 border border-rose-300 rounded-lg text-[11px] text-rose-950 font-bold mt-1">
-                                📝 Motivo Justificado de Baja: <span className="font-semibold italic text-slate-900">{log.reason}</span>
+                              <div className={`p-2 rounded-lg text-[11px] font-bold mt-1 ${
+                                isDesasignacion
+                                  ? 'bg-amber-50 border border-amber-300 text-amber-950'
+                                  : isBaja
+                                  ? 'bg-rose-100/80 border border-rose-300 text-rose-950'
+                                  : 'bg-slate-100 border border-slate-300 text-slate-900'
+                              }`}>
+                                📝 Motivo / Observación de Desasignación: <span className="font-semibold italic text-slate-900">{log.reason}</span>
                               </div>
                             )}
 

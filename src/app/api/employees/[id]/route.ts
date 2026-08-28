@@ -206,6 +206,11 @@ export async function PUT(
       if (newStatus === 'INACTIVO') {
         const activeAssignments = await prisma.equipmentAssignment.findMany({
           where: { employeeId: id, fecha_fin: null },
+          include: {
+            equipment: {
+              include: { type: true, brand: true, model: true },
+            },
+          },
         });
 
         for (const ass of activeAssignments) {
@@ -217,9 +222,37 @@ export async function PUT(
               notes: ass.notes ? `${ass.notes} | ${noteMsg}` : noteMsg,
             },
           });
+
+          let eqLogs: any[] = [];
+          try {
+            eqLogs = JSON.parse(ass.equipment.history_logs || '[]');
+          } catch (e) {}
+
+          eqLogs.unshift({
+            id: 'evt-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+            timestamp: nowFormatted,
+            userId: sessionUser.id,
+            userName: sessionUser.name,
+            userEmail: sessionUser.email,
+            type: 'DESASIGNACION',
+            reason: `Desasignado por baja de funcionario. Motivo: "${cleanBajaReason}"`,
+            details: `Equipo desasignado automáticamente por baja del funcionario ${employee.full_name}`,
+            changes: [
+              `Estado Operativo: ${ass.equipment.status || 'asignado'} ➔ disponible`,
+              `Funcionario Desvinculado: ${employee.full_name} (RUN: ${employee.rut_document})`,
+              `Cargo del Funcionario: ${employee.position || 'N/A'}`,
+              `Motivo Justificado de Baja: ${cleanBajaReason}`,
+              `Fecha y Hora: ${nowFormatted}`,
+              `Desasignado por: ${sessionUser.name} (${sessionUser.email || 'Sin Email'})`,
+            ],
+          });
+
           await prisma.equipment.update({
             where: { id: ass.equipmentId },
-            data: { status: 'disponible' },
+            data: {
+              status: 'disponible',
+              history_logs: JSON.stringify(eqLogs),
+            },
           });
         }
 
@@ -364,9 +397,14 @@ export async function DELETE(
       },
     });
 
-    // Unassign active equipment & log event in assignment history
+    // Unassign active equipment & log event in assignment history & equipment history_logs
     const activeAssignments = await prisma.equipmentAssignment.findMany({
       where: { employeeId: id, fecha_fin: null },
+      include: {
+        equipment: {
+          include: { type: true, brand: true, model: true },
+        },
+      },
     });
 
     for (const ass of activeAssignments) {
@@ -378,9 +416,37 @@ export async function DELETE(
           notes: ass.notes ? `${ass.notes} | ${noteMsg}` : noteMsg,
         },
       });
+
+      let eqLogs: any[] = [];
+      try {
+        eqLogs = JSON.parse(ass.equipment.history_logs || '[]');
+      } catch (e) {}
+
+      eqLogs.unshift({
+        id: 'evt-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+        timestamp: nowFormatted,
+        userId: sessionUser.id,
+        userName: sessionUser.name,
+        userEmail: sessionUser.email,
+        type: 'DESASIGNACION',
+        reason: `Desasignado por baja de funcionario. Motivo: "${cleanReason}"`,
+        details: `Equipo desasignado automáticamente por baja del funcionario ${employee.full_name}`,
+        changes: [
+          `Estado Operativo: ${ass.equipment.status || 'asignado'} ➔ disponible`,
+          `Funcionario Desvinculado: ${employee.full_name} (RUN: ${employee.rut_document})`,
+          `Cargo del Funcionario: ${employee.position || 'N/A'}`,
+          `Motivo Justificado de Baja: ${cleanReason}`,
+          `Fecha y Hora: ${nowFormatted}`,
+          `Desasignado por: ${sessionUser.name} (${sessionUser.email || 'Sin Email'})`,
+        ],
+      });
+
       await prisma.equipment.update({
         where: { id: ass.equipmentId },
-        data: { status: 'disponible' },
+        data: {
+          status: 'disponible',
+          history_logs: JSON.stringify(eqLogs),
+        },
       });
     }
 

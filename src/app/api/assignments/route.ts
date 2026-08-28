@@ -123,12 +123,13 @@ export async function POST(req: NextRequest) {
       userName: sessionUser.name,
       userEmail: sessionUser.email,
       type: 'ASIGNACION',
-      details: `Equipo asignado a ${employee.full_name} por ${sessionUser.name}`,
+      details: `Equipo asignado al funcionario ${employee.full_name} por ${sessionUser.name}`,
       changes: [
         `Asignado a: ${employee.full_name} (RUN: ${employee.rut_document})`,
-        `Cargo: ${employee.position}`,
+        `Cargo: ${employee.position || 'N/A'}`,
         `Estado Operativo: ${equipment.status} ➔ asignado`,
         `Notas: ${notes ? notes.trim() : 'Sin notas'}`,
+        `Asignado por: ${sessionUser.name} (${sessionUser.email || 'Sin Email'})`,
       ],
     });
 
@@ -136,12 +137,39 @@ export async function POST(req: NextRequest) {
     let targetBranchId = equipment.branchId;
     let targetDeptId = equipment.departmentId !== null ? equipment.departmentId : (employee.departmentId || null);
 
-    // Update employee branch & department so it immediately reflects on the employee record
+    // Update employee branch, department & record assignment in employee.history_logs
+    let empLogs: any[] = [];
+    try {
+      empLogs = JSON.parse(employee.history_logs || '[]');
+    } catch (e) {}
+
+    const eqType = equipment.typeId ? await prisma.equipmentType.findUnique({ where: { id: equipment.typeId } }) : null;
+    const eqBrand = equipment.brandId ? await prisma.brand.findUnique({ where: { id: equipment.brandId } }) : null;
+    const eqModel = equipment.modelId ? await prisma.equipmentModel.findUnique({ where: { id: equipment.modelId } }) : null;
+
+    empLogs.unshift({
+      id: 'evt-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      timestamp: nowFormatted,
+      userId: sessionUser.id,
+      userName: sessionUser.name,
+      userEmail: sessionUser.email,
+      type: 'ASIGNACION',
+      details: `Equipo ${eqType?.name || 'Equipo'} (Asset Tag: ${equipment.asset_tag}) asignado al funcionario`,
+      changes: [
+        `Equipo Asignado: ${eqType?.name || ''} ${eqBrand?.name || ''} ${eqModel?.name || ''}`.trim(),
+        `Asset Tag: ${equipment.asset_tag}`,
+        `Número de Serie: ${equipment.serial_number}`,
+        `Notas de Asignación: ${notes ? notes.trim() : 'Sin notas'}`,
+        `Asignado por: ${sessionUser.name} (${sessionUser.email || 'Sin Email'})`,
+      ],
+    });
+
     await prisma.employee.update({
       where: { id: employeeId },
       data: {
         branchId: targetBranchId,
         departmentId: targetDeptId,
+        history_logs: JSON.stringify(empLogs),
       },
     });
 
@@ -199,13 +227,17 @@ export async function PUT(req: NextRequest) {
 
     const activeAssignment = await prisma.equipmentAssignment.findFirst({
       where: { equipmentId, fecha_fin: null },
+      include: { employee: true },
     });
 
     if (!activeAssignment) {
       return NextResponse.json({ error: 'No hay ninguna asignación activa para este equipo' }, { status: 400 });
     }
 
-    const eqObj = await prisma.equipment.findUnique({ where: { id: equipmentId } });
+    const eqObj = await prisma.equipment.findUnique({
+      where: { id: equipmentId },
+      include: { type: true, brand: true, model: true },
+    });
     const nowFormatted = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
       ' ' +
       new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false }) +
@@ -216,6 +248,12 @@ export async function PUT(req: NextRequest) {
       existingLogs = JSON.parse(eqObj?.history_logs || '[]');
     } catch (e) {}
 
+    const empName = activeAssignment.employee ? activeAssignment.employee.full_name : 'Funcionario';
+    const empRut = activeAssignment.employee ? activeAssignment.employee.rut_document : 'N/A';
+    const empPos = activeAssignment.employee ? activeAssignment.employee.position : 'N/A';
+
+    const cleanUnassignNotes = notes ? notes.trim() : 'Desasignación manual de equipo';
+
     existingLogs.unshift({
       id: 'evt-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       timestamp: nowFormatted,
@@ -223,12 +261,48 @@ export async function PUT(req: NextRequest) {
       userName: sessionUser.name,
       userEmail: sessionUser.email,
       type: 'DESASIGNACION',
-      details: `Equipo desasignado por ${sessionUser.name}`,
+      reason: cleanUnassignNotes,
+      details: `Equipo desasignado del funcionario ${empName}`,
       changes: [
         `Estado Operativo: asignado ➔ disponible`,
-        `Notas / Motivo Desasignación: ${notes ? notes.trim() : 'Sin notas'}`,
+        `Desasignado de: ${empName} (RUN: ${empRut})`,
+        `Cargo del Funcionario: ${empPos}`,
+        `Notas / Motivo Desasignación: ${cleanUnassignNotes}`,
+        `Fecha y Hora: ${nowFormatted}`,
+        `Desasignado por: ${sessionUser.name} (${sessionUser.email || 'Sin Email'})`,
       ],
     });
+
+    if (activeAssignment.employee) {
+      let empLogs: any[] = [];
+      try {
+        empLogs = JSON.parse(activeAssignment.employee.history_logs || '[]');
+      } catch (e) {}
+
+      empLogs.unshift({
+        id: 'evt-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+        timestamp: nowFormatted,
+        userId: sessionUser.id,
+        userName: sessionUser.name,
+        userEmail: sessionUser.email,
+        type: 'DESASIGNACION',
+        details: `Equipo ${eqObj?.type?.name || 'Equipo'} (Asset Tag: ${eqObj?.asset_tag || 'N/A'}) desasignado del funcionario`,
+        changes: [
+          `Equipo Desasignado: ${eqObj?.type?.name || ''} ${eqObj?.brand?.name || ''} ${eqObj?.model?.name || ''}`.trim(),
+          `Asset Tag: ${eqObj?.asset_tag || 'N/A'}`,
+          `Número de Serie: ${eqObj?.serial_number || 'N/A'}`,
+          `Notas / Motivo Desasignación: ${notes ? notes.trim() : 'Sin notas'}`,
+          `Desasignado por: ${sessionUser.name} (${sessionUser.email || 'Sin Email'})`,
+        ],
+      });
+
+      await prisma.employee.update({
+        where: { id: activeAssignment.employeeId },
+        data: {
+          history_logs: JSON.stringify(empLogs),
+        },
+      });
+    }
 
     const [closedAssignment, updatedEquipment] = await prisma.$transaction([
       prisma.equipmentAssignment.update({

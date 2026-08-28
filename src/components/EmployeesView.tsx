@@ -1718,6 +1718,8 @@ export default function EmployeesView({
                       const isBaja = log.type === 'BAJA';
                       const isCreacion = log.type === 'CREACION';
                       const isReactivacion = log.type === 'REACTIVACION';
+                      const isAsignacion = log.type === 'ASIGNACION';
+                      const isDesasignacion = log.type === 'DESASIGNACION';
 
                       return (
                         <div key={log.id || idx} className="relative flex items-start space-x-3 text-xs pl-2">
@@ -1725,10 +1727,10 @@ export default function EmployeesView({
                             className={`w-4 h-4 rounded-full border-2 mt-1 z-10 flex-shrink-0 ${
                               isBaja
                                 ? 'bg-rose-500 border-rose-200'
-                                : isCreacion
+                                : isCreacion || isReactivacion || isAsignacion
                                 ? 'bg-emerald-500 border-emerald-200'
-                                : isReactivacion
-                                ? 'bg-emerald-500 border-emerald-200'
+                                : isDesasignacion
+                                ? 'bg-amber-500 border-amber-200'
                                 : 'bg-[#016098] border-[#016098]/30'
                             }`}
                           />
@@ -1739,10 +1741,10 @@ export default function EmployeesView({
                                 className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
                                   isBaja
                                     ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                                    : isCreacion
+                                    : isCreacion || isReactivacion || isAsignacion
                                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                    : isReactivacion
-                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                    : isDesasignacion
+                                    ? 'bg-amber-100 text-amber-800 border border-amber-300'
                                     : 'bg-[#016098]/10 text-[#016098] border border-[#016098]/30'
                                 }`}
                               >
