@@ -160,6 +160,30 @@ export async function POST(req: NextRequest) {
         const paternal = nameParts[1] || '';
         const maternal = nameParts.slice(2).join(' ') || '';
 
+        const nowFormatted = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+          ' ' +
+          new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false }) +
+          ' hrs';
+
+        const initialLogs = [
+          {
+            id: 'evt-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+            timestamp: nowFormatted,
+            userId: sessionUser.id,
+            userName: sessionUser.name,
+            userEmail: sessionUser.email,
+            type: 'CREACION',
+            details: `Funcionario registrado masivamente mediante importación CSV por ${sessionUser.name}`,
+            changes: [
+              `Registrado mediante CSV con RUN ${formattedRut}`,
+              `Nombre: ${cleanName}`,
+              `Cargo: ${position}`,
+              `Sucursal: ${targetBranch.name}`,
+              `Departamento: ${targetDept.name}`,
+            ],
+          },
+        ];
+
         await prisma.employee.create({
           data: {
             rut_document: formattedRut,
@@ -172,6 +196,7 @@ export async function POST(req: NextRequest) {
             branchId: targetBranch.id,
             departmentId: targetDept.id,
             status: 'ACTIVO',
+            history_logs: JSON.stringify(initialLogs),
           },
         });
 

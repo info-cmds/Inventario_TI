@@ -80,6 +80,7 @@ export async function GET(req: NextRequest) {
         branchId: true,
         departmentId: true,
         status: true,
+        history_logs: true,
         createdAt: true,
         updatedAt: true,
         branch: { include: { sector: true } },
