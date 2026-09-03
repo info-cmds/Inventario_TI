@@ -175,6 +175,7 @@ export async function POST(req: NextRequest) {
             type: 'CREACION',
             details: `Funcionario registrado masivamente mediante importación CSV por ${sessionUser.name}`,
             changes: [
+              `Fecha de Creación del Funcionario: ${nowFormatted}`,
               `Registrado mediante CSV con RUN ${formattedRut}`,
               `Nombre: ${cleanName}`,
               `Cargo: ${position}`,

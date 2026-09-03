@@ -18,6 +18,7 @@ import {
   Building2,
   X,
   UserX,
+  Calendar,
 } from 'lucide-react';
 import { CSVImportRow, CSVImportResult } from '@/types';
 import Pagination from './Pagination';
@@ -710,8 +711,13 @@ export default function EmployeesView({
                           <div className={`font-bold ${isInactive ? 'text-rose-950 font-extrabold' : 'text-slate-900'}`}>
                             {emp.full_name}
                           </div>
-                          <div className="text-[10px] text-slate-500">
-                            {emp.email ? emp.email : <span className="italic text-slate-400">Sin correo</span>}
+                          <div className="text-[10px] text-slate-500 flex flex-wrap items-center gap-x-1">
+                            <span>{emp.email ? emp.email : <span className="italic text-slate-400">Sin correo</span>}</span>
+                            {emp.createdAt && (
+                              <span className="text-[9px] text-slate-400 font-medium" title={`Fecha de Creación: ${formatDateTime(emp.createdAt)}`}>
+                                • Creado: {formatDateTime(emp.createdAt).split(' ')[0]}
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="py-3 px-4">
@@ -1340,8 +1346,21 @@ export default function EmployeesView({
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-bold text-slate-800 text-lg">{selectedEmpDetail.full_name}</h3>
-                <p className="text-xs text-slate-500">
-                  RUN: {selectedEmpDetail.rut_document} | {selectedEmpDetail.position} | {selectedEmpDetail.branch?.name}
+                <p className="text-xs text-slate-500 flex flex-wrap items-center gap-x-2">
+                  <span>RUN: <strong className="font-mono">{selectedEmpDetail.rut_document}</strong></span>
+                  <span>|</span>
+                  <span>{selectedEmpDetail.position}</span>
+                  <span>|</span>
+                  <span>{selectedEmpDetail.branch?.name}</span>
+                  {selectedEmpDetail.createdAt && (
+                    <>
+                      <span>|</span>
+                      <span className="font-semibold text-emerald-800 flex items-center">
+                        <Calendar className="w-3.5 h-3.5 mr-1 text-emerald-600 inline" />
+                        <span>Fecha Creación: {formatDateTime(selectedEmpDetail.createdAt)}</span>
+                      </span>
+                    </>
+                  )}
                 </p>
               </div>
               <button
@@ -1683,9 +1702,17 @@ export default function EmployeesView({
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-800 text-base">Trazabilidad y Eventos del Funcionario</h3>
-                  <p className="text-xs text-slate-500 font-medium">
-                    {selectedEmpHistory.full_name} | RUN: <span className="font-mono font-bold">{selectedEmpHistory.rut_document}</span>
-                  </p>
+                  <div className="text-xs text-slate-500 font-medium space-y-0.5">
+                    <div>
+                      {selectedEmpHistory.full_name} | RUN: <span className="font-mono font-bold">{selectedEmpHistory.rut_document}</span>
+                    </div>
+                    {selectedEmpHistory.createdAt && (
+                      <div className="inline-flex items-center text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 text-[11px] font-semibold mt-0.5">
+                        <Calendar className="w-3.5 h-3.5 mr-1 text-emerald-600 inline" />
+                        <span>Fecha de Creación: <strong className="text-slate-900">{formatDateTime(selectedEmpHistory.createdAt)}</strong></span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               <button
@@ -1704,7 +1731,29 @@ export default function EmployeesView({
                   logs = JSON.parse(selectedEmpHistory.history_logs || '[]');
                 } catch (e) {}
 
-                if (!Array.isArray(logs) || logs.length === 0) {
+                if (!Array.isArray(logs)) logs = [];
+
+                // Guarantee inclusion of creation date in history events
+                const hasCreationLog = logs.some((l: any) => l.type === 'CREACION');
+                if (!hasCreationLog && selectedEmpHistory.createdAt) {
+                  const formattedCreation = formatDateTime(selectedEmpHistory.createdAt);
+                  logs.push({
+                    id: 'evt-created-at-' + selectedEmpHistory.id,
+                    timestamp: formattedCreation,
+                    userId: 'system',
+                    userName: 'Sistema / Registro Inicial',
+                    type: 'CREACION',
+                    details: `Registro de creación del funcionario en el sistema`,
+                    changes: [
+                      `Fecha de Creación del Funcionario: ${formattedCreation}`,
+                      `RUN: ${selectedEmpHistory.rut_document}`,
+                      `Nombre: ${selectedEmpHistory.full_name}`,
+                      `Cargo: ${selectedEmpHistory.position || 'FUNCIONARIO'}`,
+                    ],
+                  });
+                }
+
+                if (logs.length === 0) {
                   return (
                     <div className="p-6 text-center text-xs text-slate-400 italic bg-slate-50 rounded-xl border border-slate-200">
                       Sin eventos registrados en la trazabilidad de este funcionario.

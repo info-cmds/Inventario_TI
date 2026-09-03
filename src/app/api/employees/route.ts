@@ -193,9 +193,11 @@ export async function POST(req: NextRequest) {
         timestamp: nowFormatted,
         userId: sessionUser.id,
         userName: sessionUser.name,
+        userEmail: sessionUser.email,
         type: 'CREACION',
         details: `Funcionario registrado en el sistema por ${sessionUser.name}`,
         changes: [
+          `Fecha de Creación del Funcionario: ${nowFormatted}`,
           `Registrado con RUN ${formattedRut}`,
           `Nombre: ${fullNameComputed}`,
           `Cargo: ${position ? position.trim().toUpperCase() : 'FUNCIONARIO'}`,
